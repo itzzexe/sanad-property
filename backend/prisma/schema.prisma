@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  OWNER
+  ACCOUNTANT
+}
+
+enum UnitStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+}
+
+enum UnitType {
+  APARTMENT
+  SHOP
+  OFFICE
+  VILLA
+  WAREHOUSE
+}
+
+enum LeaseStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  PENDING
+}
+
+enum PaymentFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  DIGITAL_WALLET
+  CHECK
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PARTIAL
+  PENDING
+  FAILED
+}
+
+enum InstallmentStatus {
+  PAID
+  PENDING
+  OVERDUE
+  PARTIALLY_PAID
+}
+
+enum NotificationType {
+  PAYMENT_DUE
+  PAYMENT_OVERDUE
+  LEASE_EXPIRING
+  MAINTENANCE
+  GENERAL
+}
+
+enum Currency {
+  USD
+  EUR
+  GBP
+  IQD
+  AED
+  SAR
+  KWD
+  BHD
+  QAR
+  OMR
+  JOD
+}
+
+enum ExpenseCategory {
+  MAINTENANCE
+  UTILITY
+  TAX
+  MANAGEMENT
+  INSURANCE
+  SALARY
+  MARKETING
+  OTHER
+}
+
+// ─── MODELS ──────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  role          UserRole  @default(OWNER)
+  phone         String?
+  avatar        String?
+  isActive      Boolean   @default(true) @map("is_active")
+  refreshToken  String?   @map("refresh_token")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  properties    Property[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Property {
+  id          String    @id @default(uuid())
+  name        String
+  address     String
+  city        String
+  state       String?
+  country     String    @default("US")
+  zipCode     String?   @map("zip_code")
+  description String?
+  image       String?
+  ownerId     String    @map("owner_id")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  owner       User      @relation(fields: [ownerId], references: [id])
+  units       Unit[]
+  expenses      Expense[]
+  shareholders  Shareholder[]
+  distributions ProfitDistribution[]
+  assets        Asset[]
+
+  @@index([ownerId])
+  @@map("properties")
+}
+
+model Unit {
+  id           String     @id @default(uuid())
+  unitNumber   String     @map("unit_number")
+  type         UnitType   @default(APARTMENT)
+  status       UnitStatus @default(AVAILABLE)
+  floor        Int?
+  area         Float?
+  bedrooms     Int?
+  bathrooms    Int?
+  monthlyRent  Float      @map("monthly_rent")
+  currency     Currency   @default(IQD)
+  description  String?
+  propertyId   String     @map("property_id")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+
+  property     Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  leases       Lease[]
+  expenses     Expense[]
+
+  @@unique([propertyId, unitNumber])
+  @@index([propertyId])
+  @@index([status])
+  @@map("units")
+}
+
+model Tenant {
+  id             String    @id @default(uuid())
+  firstName      String    @map("first_name")
+  lastName       String    @map("last_name")
+  email          String    @unique
+  phone          String
+  idType         String?   @map("id_type")
+  idNumber       String?   @map("id_number")
+  idDocument     String?   @map("id_document")
+  nationality    String?
+  dateOfBirth    DateTime? @map("date_of_birth")
+  address        String?
+  emergencyName  String?   @map("emergency_name")
+  emergencyPhone String?   @map("emergency_phone")
+  notes          String?
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  leases         Lease[]
+
+  @@index([email])
+  @@map("tenants")
+}
+
+model Lease {
+  id               String           @id @default(uuid())
+  leaseNumber      String           @unique @map("lease_number")
+  tenantId         String           @map("tenant_id")
+  unitId           String           @map("unit_id")
+  startDate        DateTime         @map("start_date")
+  endDate          DateTime         @map("end_date")
+  rentAmount       Float            @map("rent_amount")
+  currency         Currency         @default(IQD)
+  securityDeposit  Float?           @map("security_deposit")
+  paymentFrequency PaymentFrequency @default(MONTHLY) @map("payment_frequency")
+  lateFeePercent   Float            @default(5) @map("late_fee_percent")
+  lateFeeGraceDays Int              @default(5) @map("late_fee_grace_days")
+  status           LeaseStatus      @default(PENDING)
+  terms            String?
+  document         String?
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  deletedAt        DateTime?        @map("deleted_at")
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  unit             Unit             @relation(fields: [unitId], references: [id])
+  payments         Payment[]
+  installments     Installment[]
+
+  @@index([tenantId])
+  @@index([unitId])
+  @@index([status])
+  @@map("leases")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  paymentNumber String        @unique @map("payment_number")
+  leaseId       String        @map("lease_id")
+  amount        Float
+  currency      Currency      @default(IQD)
+  method        PaymentMethod @default(CASH)
+  status        PaymentStatus @default(COMPLETED)
+  paidDate      DateTime      @default(now()) @map("paid_date")
+  notes         String?
+  lateFee       Float         @default(0) @map("late_fee")
+  transactionRef String?      @map("transaction_ref")
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  lease         Lease         @relation(fields: [leaseId], references: [id])
+  installment   Installment?  @relation(fields: [installmentId], references: [id])
+  installmentId String?       @map("installment_id")
+  receipt       Receipt?
+
+  @@index([leaseId])
+  @@index([paidDate])
+  @@map("payments")
+}
+
+model Installment {
+  id            String            @id @default(uuid())
+  leaseId       String            @map("lease_id")
+  dueDate       DateTime          @map("due_date")
+  amount        Float
+  currency      Currency          @default(IQD)
+  paidAmount    Float             @default(0) @map("paid_amount")
+  lateFee       Float             @default(0) @map("late_fee")
+  status        InstallmentStatus @default(PENDING)
+  isActive      Boolean           @default(true) @map("is_active")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  lease         Lease             @relation(fields: [leaseId], references: [id])
+  payments      Payment[]
+
+  @@index([leaseId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("installments")
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  receiptNumber String   @unique @map("receipt_number")
+  paymentId     String   @unique @map("payment_id")
+  pdfUrl        String?  @map("pdf_url")
+  qrCode        String?  @map("qr_code")
+  issuedAt      DateTime @default(now()) @map("issued_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  payment       Payment  @relation(fields: [paymentId], references: [id])
+
+  @@index([receiptNumber])
+  @@map("receipts")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  type      NotificationType @default(GENERAL)
+  title     String
+  message   String
+  isRead    Boolean          @default(false) @map("is_read")
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  action     String
+  entity     String
+  entityId   String   @map("entity_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSettings {
+  id              String   @id @default(uuid())
+  organizationName String   @default("RentFlow") @map("organization_name")
+  address          String?
+  description      String?
+  defaultCurrency  Currency @default(IQD) @map("default_currency")
+  exchangeRateUSD  Float    @default(1460.0) @map("exchange_rate_usd")
+  language         String   @default("ar")
+  logo             String?
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+// ─── NEW FINANCIAL MODULES ───────────────────────────────
+
+model Expense {
+  id          String          @id @default(uuid())
+  title       String
+  amount      Float
+  currency    Currency        @default(IQD)
+  category    ExpenseCategory @default(MAINTENANCE)
+  date        DateTime        @default(now())
+  propertyId  String?         @map("property_id")
+  unitId      String?         @map("unit_id")
+  description String?
+  receiptUrl  String?         @map("receipt_url")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  property    Property?       @relation(fields: [propertyId], references: [id])
+  unit        Unit?           @relation(fields: [unitId], references: [id])
+
+  @@index([propertyId])
+  @@index([category])
+  @@map("expenses")
+}
+
+model Shareholder {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  sharePercent Float    @map("share_percent") // e.g. 25.0
+  propertyId  String   @map("property_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  property    Property @relation(fields: [propertyId], references: [id])
+  distributions ProfitDistribution[]
+
+  @@index([propertyId])
+  @@map("shareholders")
+}
+
+model ProfitDistribution {
+  id            String      @id @default(uuid())
+  shareholderId String      @map("shareholder_id")
+  propertyId    String      @map("property_id")
+  amount        Float
+  currency      Currency    @default(IQD)
+  periodStart   DateTime    @map("period_start")
+  periodEnd     DateTime    @map("period_end")
+  status        String      @default("PAID") // PAID, PENDING
+  distributedAt DateTime    @default(now()) @map("distributed_at")
+
+  shareholder   Shareholder @relation(fields: [shareholderId], references: [id])
+  property      Property    @relation(fields: [propertyId], references: [id])
+
+  @@index([shareholderId])
+  @@index([propertyId])
+  @@map("profit_distributions")
+}
+
+model Asset {
+  id              String   @id @default(uuid())
+  name            String
+  value           Float
+  currency        Currency @default(IQD)
+  purchaseDate    DateTime @map("purchase_date")
+  depreciationRate Float    @map("depreciation_rate") // e.g. 10% per year
+  usefulLifeYears Int      @map("useful_life_years")
+  propertyId      String   @map("property_id")
+  description     String?
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property        Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("assets")
+}

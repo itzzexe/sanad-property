@@ -1,0 +1,4 @@
+Role	Email	Password
+Admin	admin@rentflow.com	Admin@123
+Owner	owner@rentflow.com	Owner@123
+Accountant	accountant@rentflow.com	Account@123
