@@ -19,6 +19,7 @@ import { UserModule } from './modules/user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { FinancialModule } from './modules/financial/financial.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { AttachmentModule } from './modules/attachment/attachment.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     UserModule,
     FinancialModule,
     ReportsModule,
+    AttachmentModule,
   ],
   providers: [
     {

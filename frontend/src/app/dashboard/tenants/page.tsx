@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { Plus, Search, Users, Loader2, Trash2, Mail, Phone, MapPin, UserCheck } from "lucide-react";
+import { Plus, Search, Users, Loader2, Trash2, Mail, Phone, MapPin, UserCheck, Paperclip, Eye, FileText, Download, Upload } from "lucide-react";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<any[]>([]);
@@ -18,9 +19,34 @@ export default function TenantsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", idType: "بطاقة وطنية", idNumber: "", nationality: "عراقي", address: "" });
   const [saving, setSaving] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [showTenantDetails, setShowTenantDetails] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post("/tenants/import", formData);
+      alert(`تم استيراد ${res.successCount || 0} سجل بنجاح.\n\n${res.errorsCount > 0 ? `أخطاء (${res.errorsCount}):\n` + res.errors.join('\n') : ''}`);
+      load();
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ أثناء رفع الملف");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   useEffect(() => { load(); }, [search]);
-
+  
   async function load() {
     try {
       const res = await api.get(`/tenants?search=${search}&limit=50`);
@@ -59,9 +85,15 @@ export default function TenantsPage() {
             إدارة بيانات المستأجرين والتوثيق القانوني المركزي
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold h-14 px-8 rounded-2xl shadow-lg shadow-indigo-600/20 gap-3 border-none hover:scale-105 transition-all">
-          <Plus className="w-5 h-5" /> تسجيل مستأجر جديد
-        </Button>
+        <div className="flex items-center gap-3">
+          <input type="file" accept=".xlsx, .xls" className="hidden" ref={fileInputRef} onChange={handleImport} />
+          <Button disabled={importing} onClick={() => fileInputRef.current?.click()} variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold h-14 px-6 rounded-2xl gap-2 transition-all">
+            {importing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />} رفع إكسل
+          </Button>
+          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold h-14 px-8 rounded-2xl shadow-lg shadow-indigo-600/20 gap-3 border-none hover:scale-105 transition-all">
+            <Plus className="w-5 h-5" /> تسجيل مستأجر جديد
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-end">
@@ -69,7 +101,7 @@ export default function TenantsPage() {
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 group-focus-within:text-indigo-500 transition-colors" />
           <input 
             placeholder="بحث عن مستأجر بالاسم، البريد، أو رقم الهاتف..." 
-            className="w-full pr-12 h-14 bg-white border border-slate-100 shadow-premium rounded-2xl text-lg font-bold placeholder:text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/30 transition-all" 
+            className="w-full pr-12 h-14 bg-white border border-slate-100 shadow-premium rounded-2xl text-lg font-bold placeholder:text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/30 transition-all font-bold" 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
           />
@@ -141,9 +173,23 @@ export default function TenantsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="pl-8 text-left">
-                    <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors" onClick={() => handleDelete(tenant.id)}>
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                       <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl hover:bg-slate-100 text-slate-600" onClick={() => {
+                          setSelectedTenant(tenant);
+                          setShowTenantDetails(true);
+                        }}>
+                        <Eye className="w-4.5 h-4.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 transition-colors" onClick={() => {
+                          setSelectedTenant(tenant);
+                          setShowAttachments(true);
+                        }}>
+                        <Paperclip className="w-4.5 h-4.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors" onClick={() => handleDelete(tenant.id)}>
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -203,6 +249,99 @@ export default function TenantsPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tenant Details Dialog */}
+      <Dialog open={showTenantDetails} onOpenChange={setShowTenantDetails}>
+        <DialogContent className="sm:max-w-[600px] border-none shadow-2xl bg-white rounded-[32px] overflow-hidden p-0" dir="rtl">
+           <div className="p-8 space-y-8">
+              <DialogHeader className="text-right">
+                <div className="flex items-center gap-4">
+                   <div className="w-16 h-16 rounded-3xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+                     <Users className="w-8 h-8" />
+                   </div>
+                   <div>
+                     <DialogTitle className="text-3xl font-black text-slate-900 leading-tight">الملف الشخصي للمستأجر</DialogTitle>
+                     <p className="text-indigo-600 font-black text-sm">{selectedTenant?.firstName} {selectedTenant?.lastName}</p>
+                   </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">الاسم</p>
+                    <p className="font-black text-slate-900">{selectedTenant?.firstName}</p>
+                 </div>
+                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">العائلة</p>
+                    <p className="font-black text-slate-900">{selectedTenant?.lastName}</p>
+                 </div>
+                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center col-span-2">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">رقم الهاتف</p>
+                    <p className="font-black text-slate-900 text-lg">{selectedTenant?.phone}</p>
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                  <div className="p-5 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
+                     <span className="text-sm font-bold text-slate-600">البريد الإلكتروني:</span>
+                     <span className="font-bold text-slate-900">{selectedTenant?.email}</span>
+                  </div>
+                  <div className="p-5 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
+                     <span className="text-sm font-bold text-slate-600">رقم الهوية ({selectedTenant?.idType}):</span>
+                     <span className="font-black text-indigo-600 font-mono">{selectedTenant?.idNumber}</span>
+                  </div>
+                  <div className="p-5 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                     <p className="text-[10px] text-slate-500 font-black uppercase mb-2">العنوان المسجل:</p>
+                     <p className="font-bold text-slate-800">{selectedTenant?.address || 'غير محدد'}</p>
+                  </div>
+              </div>
+
+              <div className="p-5 bg-indigo-50/30 rounded-3xl border border-indigo-100/50">
+                 <p className="text-[10px] text-indigo-600 font-black uppercase mb-1 flex items-center gap-1">
+                    <UserCheck className="w-3 h-3" /> النشاط التعاقدي
+                 </p>
+                 <p className="font-bold text-slate-900">لدى هذا المستأجر عدد ({selectedTenant?.leases?.length || 0}) عقود مسجلة في النظام.</p>
+              </div>
+           </div>
+           
+           <div className="p-8 bg-slate-50 flex gap-4">
+              <Button variant="ghost" onClick={() => setShowTenantDetails(false)} className="flex-1 h-12 rounded-xl font-bold text-slate-600 hover:bg-slate-200">إغلاق</Button>
+              <Button className="flex-1 h-12 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl font-black gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
+                <FileText className="w-5 h-5" /> استخراج ملف المستأجر (PDF)
+              </Button>
+           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attachments Dialog */}
+      <Dialog open={showAttachments} onOpenChange={setShowAttachments}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white rounded-[32px] p-8" dir="rtl">
+          <DialogHeader className="text-right mb-4">
+            <DialogTitle className="text-2xl font-black text-slate-900 leading-tight flex items-center gap-3">
+              <Paperclip className="w-6 h-6 text-indigo-600" />
+              مرفقات المستأجر: {selectedTenant?.firstName} {selectedTenant?.lastName}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedTenant && (
+            <AttachmentManager 
+              entityType="TENANT" 
+              entityId={selectedTenant.id} 
+              title="هويات ووثائق المستأجر"
+            />
+          )}
+
+          <div className="mt-8 flex justify-end">
+            <Button 
+              type="button"
+              onClick={() => setShowAttachments(false)} 
+              className="bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold px-8 rounded-xl"
+            >
+              إغلاق
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

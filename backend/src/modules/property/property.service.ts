@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -55,6 +56,9 @@ export class PropertyService {
         include: {
           units: { where: { deletedAt: null } },
           owner: { select: { id: true, firstName: true, lastName: true, email: true } },
+          _count: {
+            select: { units: { where: { deletedAt: null } }, shareholders: true }
+          }
         },
       }),
       this.prisma.property.count({ where }),
@@ -71,6 +75,7 @@ export class PropertyService {
       where: { id, deletedAt: null },
       include: {
         units: { where: { deletedAt: null } },
+        shareholders: true,
         owner: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
@@ -113,5 +118,54 @@ export class PropertyService {
     });
     
     return property;
+  }
+
+  async importExcel(buffer: Buffer, ownerId: string) {
+    if (!buffer) throw new BadRequestException('لم يتم رفع أي ملف');
+    
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as any);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) throw new BadRequestException('ملف الإكسل فارغ');
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    // A: Name(1), B: Address(2), C: City(3), D: State(4), E: Country(5), F: ZipCode(6), G: Description(7), H: MapUrl(8)
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+      if (!row.hasValues) continue;
+
+      const values = row.values as any[];
+      const name = values[1]?.toString()?.trim();
+      const address = values[2]?.toString()?.trim();
+      const city = values[3]?.toString()?.trim();
+      const state = values[4]?.toString()?.trim();
+      const country = values[5]?.toString()?.trim() || 'العراق';
+      const zipCode = values[6]?.toString()?.trim();
+      const description = values[7]?.toString()?.trim();
+      const mapUrl = values[8]?.toString()?.trim();
+
+      if (!name || !address || !city) {
+         errors.push(`السطر ${rowNumber}: بيانات ناقصة (الاسم، العنوان، أو المدينة)`);
+         continue;
+      }
+
+      try {
+        await this.create({
+          name, address, city, state, country, zipCode, description, mapUrl
+        }, ownerId);
+        successCount++;
+      } catch (error: any) {
+        errors.push(`السطر ${rowNumber}: ${error.message || 'خطأ غير معروف'}`);
+      }
+    }
+
+    return {
+      success: true,
+      successCount,
+      errorsCount: errors.length,
+      errors
+    };
   }
 }

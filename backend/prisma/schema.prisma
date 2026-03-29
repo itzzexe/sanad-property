@@ -132,6 +132,7 @@ model Property {
   zipCode     String?   @map("zip_code")
   description String?
   image       String?
+  mapUrl      String?   @map("map_url")
   ownerId     String    @map("owner_id")
   isActive    Boolean   @default(true) @map("is_active")
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -428,4 +429,19 @@ model Asset {
 
   @@index([propertyId])
   @@map("assets")
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  url        String
+  name       String
+  type       String   // e.g., 'image/png', 'application/pdf'
+  size       Int?
+  entityType String   @map("entity_type") // e.g., 'PROPERTY', 'UNIT', 'TENANT', 'LEASE', 'PAYMENT', 'EXPENSE', 'ASSET'
+  entityId   String   @map("entity_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([entityType, entityId])
+  @@map("attachments")
 }

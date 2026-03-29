@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { 
   Zap, Plus, Search, Filter, ArrowDownRight, ArrowUpRight, 
   Trash2, Receipt, Home, Calendar, CreditCard, Loader2,
-  CheckCircle2, AlertCircle, FileText, DollarSign, Coins
+  CheckCircle2, AlertCircle, FileText, DollarSign, Coins, Paperclip, Eye, Download
 } from "lucide-react";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,9 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<any>(null);
+  const [showExpenseDetails, setShowExpenseDetails] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
   
   const [newExpense, setNewExpense] = useState({
     title: "",
@@ -274,9 +278,23 @@ export default function ExpensesPage() {
                      {new Date(exp.date).toLocaleDateString('ar-IQ')}
                   </TableCell>
                   <TableCell className="pl-8 text-left">
-                     <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)} className="h-9 w-9 text-slate-600 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100">
-                        <Trash2 className="w-4 h-4" />
-                     </Button>
+                     <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => {
+                             setSelectedExpense(exp);
+                             setShowExpenseDetails(true);
+                           }} className="h-9 w-9 text-slate-600 hover:text-[#6264A7] transition-all opacity-0 group-hover:opacity-100">
+                           <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => {
+                             setSelectedExpense(exp);
+                             setShowAttachments(true);
+                           }} className="h-9 w-9 text-slate-600 hover:text-[#6264A7] transition-all opacity-0 group-hover:opacity-100">
+                           <Paperclip className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)} className="h-9 w-9 text-slate-600 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100">
+                           <Trash2 className="w-4 h-4" />
+                        </Button>
+                     </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -284,6 +302,90 @@ export default function ExpensesPage() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Expense Details Dialog */}
+      <Dialog open={showExpenseDetails} onOpenChange={setShowExpenseDetails}>
+        <DialogContent className="sm:max-w-[600px] border-none shadow-2xl bg-white rounded-xl p-0 overflow-hidden" dir="rtl">
+           <div className="h-1 bg-[#6264A7]" />
+           <div className="p-8 space-y-8">
+              <DialogHeader className="text-right">
+                <div className="flex items-center gap-4">
+                   <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-[#6264A7] shadow-sm">
+                     <Receipt className="w-8 h-8" />
+                   </div>
+                   <div>
+                     <DialogTitle className="text-3xl font-black text-[#242424] leading-tight">تفاصيل المصروف</DialogTitle>
+                     <p className="text-[#6264A7] font-black text-xs uppercase tracking-widest">{CATEGORIES_AR[selectedExpense?.category] || selectedExpense?.category}</p>
+                   </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">الموضوع</p>
+                    <p className="font-black text-slate-900">{selectedExpense?.title}</p>
+                 </div>
+                 <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">المبلغ المصروف</p>
+                    <p className="font-black text-rose-600 text-lg">{format(selectedExpense?.amount)}</p>
+                 </div>
+                 <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">العقار المعني</p>
+                    <p className="font-black text-slate-900">{selectedExpense?.property?.name || "عام / غير محدد"}</p>
+                 </div>
+                 <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">تاريخ القيد</p>
+                    <p className="font-black text-slate-900">{selectedExpense?.date ? new Date(selectedExpense.date).toLocaleDateString('ar-IQ') : '—'}</p>
+                 </div>
+              </div>
+
+              {selectedExpense?.description && (
+                <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                   <p className="text-[10px] text-[#6264A7] font-black uppercase mb-2">وصف العملية</p>
+                   <p className="text-sm font-bold text-slate-800 leading-relaxed italic">"{selectedExpense.description}"</p>
+                </div>
+              )}
+           </div>
+           
+           <div className="p-8 bg-[#F0F0F0] border-t border-[#999999] flex gap-4">
+              <Button variant="ghost" onClick={() => setShowExpenseDetails(false)} className="flex-1 font-bold text-[#222222]">إغلاق</Button>
+              <Button className="flex-2 bg-[#6264A7] text-white hover:bg-[#464775] font-black h-12 rounded-md gap-2 shadow-lg shadow-[#6264A7]/20 active:scale-95 transition-all">
+                <FileText className="w-5 h-5" /> استخراج تفصيل المصروف (PDF)
+              </Button>
+           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attachments Dialog */}
+      <Dialog open={showAttachments} onOpenChange={setShowAttachments}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white rounded-xl p-8" dir="rtl">
+          <div className="h-1 bg-[#6264A7] absolute top-0 left-0 right-0" />
+          <DialogHeader className="text-right mb-4">
+            <DialogTitle className="text-2xl font-black text-[#242424] leading-tight flex items-center gap-3">
+              <Paperclip className="w-6 h-6 text-[#6264A7]" />
+              مرفقات ووصولات: {selectedExpense?.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedExpense && (
+            <AttachmentManager 
+              entityType="EXPENSE" 
+              entityId={selectedExpense.id} 
+              title="الوصولات والمستندات"
+            />
+          )}
+
+          <div className="mt-8 flex justify-end">
+            <Button 
+              type="button"
+              onClick={() => setShowAttachments(false)} 
+              className="bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold px-8 rounded-md"
+            >
+              إغلاق
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

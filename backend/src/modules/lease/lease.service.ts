@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
@@ -166,5 +167,56 @@ export class LeaseService {
 
       return { message: 'Lease terminated' };
     });
+  }
+
+  async importExcel(buffer: Buffer) {
+    if (!buffer) throw new BadRequestException('لم يتم رفع أي ملف');
+    
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as any);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) throw new BadRequestException('ملف الإكسل فارغ');
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+      if (!row.hasValues) continue;
+
+      const values = row.values as any[];
+      const tenantId = values[1]?.toString()?.trim();
+      const unitId = values[2]?.toString()?.trim();
+      const startDateStr = values[3]?.toString()?.trim();
+      const endDateStr = values[4]?.toString()?.trim();
+      const rentAmountStr = values[5]?.toString()?.trim();
+      const currencyStr = values[6]?.toString()?.trim() || 'IQD';
+      const securityDepositStr = values[7]?.toString()?.trim();
+      const lateFeePercentStr = values[8]?.toString()?.trim() || '5';
+
+      if (!tenantId || !unitId || !startDateStr || !endDateStr || !rentAmountStr) {
+         errors.push(`السطر ${rowNumber}: بيانات ناقصة (المعرفات، التواريخ، أو الإيجار)`);
+         continue;
+      }
+
+      try {
+        await this.create({
+          tenantId,
+          unitId,
+          startDate: new Date(startDateStr).toISOString(),
+          endDate: new Date(endDateStr).toISOString(),
+          rentAmount: parseFloat(rentAmountStr),
+          currency: currencyStr as any,
+          securityDeposit: securityDepositStr ? parseFloat(securityDepositStr) : undefined,
+          lateFeePercent: parseFloat(lateFeePercentStr),
+          paymentFrequency: 'MONTHLY' as any
+        });
+        successCount++;
+      } catch (error: any) {
+        errors.push(`السطر ${rowNumber}: ${error.message || 'خطأ غير معروف'}`);
+      }
+    }
+
+    return { success: true, successCount, errorsCount: errors.length, errors };
   }
 }

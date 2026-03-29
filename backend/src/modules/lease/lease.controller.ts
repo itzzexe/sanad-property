@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { LeaseService } from './lease.service';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
@@ -16,6 +17,16 @@ export class LeaseController {
   @ApiOperation({ summary: 'Create a new lease contract' })
   create(@Body() dto: CreateLeaseDto) {
     return this.leaseService.create(dto);
+  }
+
+  @Post('import')
+  @ApiOperation({ summary: 'Import leases from Excel file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(FileInterceptor('file'))
+  async importExcel(@UploadedFile() file: any) {
+    if (!file) throw new BadRequestException('لم يتم رفع أي ملف');
+    return this.leaseService.importExcel(file.buffer);
   }
 
   @Get()

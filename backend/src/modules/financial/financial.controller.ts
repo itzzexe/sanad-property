@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Query, Param, Delete, UseGuards } from '@nestjs/common';
 import { FinancialService } from './financial.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -42,6 +42,18 @@ export class FinancialController {
     return this.financialService.addShareholder(data);
   }
 
+  @Put('shareholders/:id')
+  @Roles(UserRole.ADMIN)
+  updateShareholder(@Param('id') id: string, @Body() data: any) {
+    return this.financialService.updateShareholder(id, data);
+  }
+
+  @Delete('shareholders/:id')
+  @Roles(UserRole.ADMIN)
+  deleteShareholder(@Param('id') id: string) {
+    return this.financialService.deleteShareholder(id);
+  }
+
   // Profit Sharing
   @Get('properties/:propertyId/profit-analysis')
   @Roles(UserRole.ADMIN, UserRole.OWNER)
@@ -57,6 +69,12 @@ export class FinancialController {
   @Roles(UserRole.ADMIN)
   distributeProfit(@Body() data: any) {
     return this.financialService.distributeProfit(data.propertyId, data);
+  }
+
+  @Delete('distributions/:id')
+  @Roles(UserRole.ADMIN)
+  deleteDistribution(@Param('id') id: string) {
+    return this.financialService.deleteDistribution(id);
   }
 
   // Assets

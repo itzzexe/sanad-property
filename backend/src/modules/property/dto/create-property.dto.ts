@@ -38,4 +38,9 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @ApiPropertyOptional({ example: 'https://goo.gl/maps/...' })
+  @IsOptional()
+  @IsString()
+  mapUrl?: string;
 }

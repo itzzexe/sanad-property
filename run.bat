@@ -41,9 +41,9 @@ echo [2/4] [DB] Preparing Database (Migrations ^& Seed)...
 cd /d "%~dp0backend"
 call npx prisma generate
 :: This creates tables if they don't exist
-call npx prisma db push --skip-generate
-:: This creates the initial users (Admin, Owner, etc.)
-call npm run prisma:seed
+:: call npx prisma db push --skip-generate
+:: Removed seed call to keep real data
+:: call npm run prisma:seed
 echo [OK] Database is ready.
 
 :: --- Step 3: Start Backend ---

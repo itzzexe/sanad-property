@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 
 const ROLE_AR = {
   ADMIN: 'مدير نظام',
-  OWNER: 'مالك عقار',
+  OWNER: 'شريك / مالك أسهم',
   ACCOUNTANT: 'محاسب'
 };
 

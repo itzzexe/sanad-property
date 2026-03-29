@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: "إدارة العقارات، المستأجرين، العقود، والمدفوعات بسهولة وبساطة.",
 };
 
+import { Toaster } from 'sonner';
 import { CurrencyProvider } from "@/context/currency-context";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CurrencyProvider>
           {children}
         </CurrencyProvider>
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

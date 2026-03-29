@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [importTab, setImportTab] = useState<'TENANTS' | 'PROPERTIES' | 'UNITS' | 'LEASES'>('TENANTS');
 
   useEffect(() => {
     loadSettings();
@@ -82,14 +83,14 @@ export default function SettingsPage() {
   async function handleSave() {
     setSaving(true);
     try {
-       const payload = {
-         organizationName: settings?.organizationName || "سند للعقارات",
-         address: settings?.address || "بغداد - المنصور",
-         defaultCurrency: settings?.defaultCurrency || "IQD",
-         exchangeRateUSD: Number(settings?.exchangeRateUSD) || 1460.0,
-         language: settings?.language || "ar",
-         logo: settings?.logo || null,
-       };
+        const payload = {
+          organizationName: settings?.organizationName || "سند للعقارات",
+          address: settings?.address || "بغداد - المنصور",
+          defaultCurrency: settings?.defaultCurrency || "IQD",
+          exchangeRateUSD: parseFloat(String(settings?.exchangeRateUSD)) || 1460.0,
+          language: settings?.language || "ar",
+          logo: settings?.logo || undefined,
+        };
        await api.put("/settings", payload);
        setSuccess(true);
        setTimeout(() => setSuccess(false), 3000);
@@ -154,11 +155,11 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-slate-700 font-bold px-1">اسم المنظمة الرسمي</Label>
-                  <Input value={settings?.organizationName} onChange={(e) => setSettings({...settings, organizationName: e.target.value})} className="h-12 bg-white border-slate-200 rounded-xl font-black text-slate-900 focus:ring-indigo-500/10 transition-all" />
+                  <Input value={settings?.organizationName || ""} onChange={(e) => setSettings({...settings, organizationName: e.target.value})} className="h-12 bg-white border-slate-200 rounded-xl font-black text-slate-900 focus:ring-indigo-500/10 transition-all" />
                 </div>
                 <div className="space-y-2">
                    <Label className="text-slate-700 font-bold px-1">العنوان الفعلي</Label>
-                   <Input value={settings?.address} onChange={(e) => setSettings({...settings, address: e.target.value})} placeholder="بغداد - المنصور" className="h-12 bg-white border-slate-200 rounded-xl font-black text-slate-900 focus:ring-indigo-500/10 transition-all" />
+                   <Input value={settings?.address || ""} onChange={(e) => setSettings({...settings, address: e.target.value})} placeholder="بغداد - المنصور" className="h-12 bg-white border-slate-200 rounded-xl font-black text-slate-900 focus:ring-indigo-500/10 transition-all" />
                 </div>
               </div>
               
@@ -220,8 +221,8 @@ export default function SettingsPage() {
                     <Input 
                       type="number" 
                       className="h-14 bg-white border-slate-200 rounded-xl font-black text-xl text-left pl-14 text-slate-900 focus:ring-emerald-500/10" 
-                      value={settings?.exchangeRateUSD}
-                      onChange={(e) => setSettings({...settings, exchangeRateUSD: parseFloat(e.target.value)})}
+                      value={settings?.exchangeRateUSD ?? 0}
+                      onChange={(e) => setSettings({...settings, exchangeRateUSD: e.target.value === "" ? 0 : parseFloat(e.target.value)})}
                     />
                   </div>
                 </div>
@@ -232,6 +233,188 @@ export default function SettingsPage() {
                   تنبيه محاسبي: تغيير سعر الصرف سيؤثر بشكل مباشر على الحسابات الظاهرية للتقارير، لكن المعاملات المسجلة سابقاً ستحافظ على قيمتها النقدية لضمان سلامة الدفاتر.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Bulk Import Instructions */}
+          <Card className="border-none shadow-premium bg-white rounded-[32px] overflow-hidden">
+            <CardHeader className="p-8 border-b border-slate-50">
+               <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-black text-slate-900">تعليمات الاستيراد الجماعي (إكسل)</CardTitle>
+                  <CardDescription className="font-medium text-slate-600 mt-1">المعايير الهيكلية المعتمدة لرفع أعداد كبيرة من البيانات</CardDescription>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                  <Database className="w-6 h-6 text-indigo-500" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8">
+               <div className="space-y-6">
+                  
+                  <div className="flex items-center justify-end gap-2 p-1.5 bg-slate-50 rounded-2xl border border-slate-100 overflow-x-auto w-fit mr-auto" dir="rtl">
+                    <button onClick={() => setImportTab('TENANTS')} className={cn("px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap", importTab === 'TENANTS' ? "bg-white text-indigo-600 shadow-sm border border-slate-200/50" : "text-slate-600 hover:bg-slate-100")}>المستأجرين</button>
+                    <button onClick={() => setImportTab('PROPERTIES')} className={cn("px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap", importTab === 'PROPERTIES' ? "bg-white text-indigo-600 shadow-sm border border-slate-200/50" : "text-slate-600 hover:bg-slate-100")}>العقارات</button>
+                    <button onClick={() => setImportTab('UNITS')} className={cn("px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap", importTab === 'UNITS' ? "bg-white text-indigo-600 shadow-sm border border-slate-200/50" : "text-slate-600 hover:bg-slate-100")}>الوحدات</button>
+                    <button onClick={() => setImportTab('LEASES')} className={cn("px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap", importTab === 'LEASES' ? "bg-white text-indigo-600 shadow-sm border border-slate-200/50" : "text-slate-600 hover:bg-slate-100")}>العقود</button>
+                  </div>
+
+                  <Alert className="bg-indigo-50/50 border-indigo-100 rounded-2xl">
+                    <Info className="h-5 w-5 text-indigo-600" />
+                    <AlertTitle className="font-black text-indigo-900 pr-2">معلومة تقنية هامة</AlertTitle>
+                    <AlertDescription className="text-indigo-800 font-bold pr-2 leading-relaxed mt-1">
+                       تأكد من حفظ الملف بصيغة <code className="bg-white px-1.5 py-0.5 rounded text-indigo-900 border border-indigo-100 font-mono">.xlsx</code> أو <code className="bg-white px-1.5 py-0.5 rounded text-indigo-900 border border-indigo-100 font-mono">.xls</code>. يتجاهل النظام تلقائياً السطر الأول باعتباره "صف العناوين".
+                    </AlertDescription>
+                  </Alert>
+
+                  {importTab === 'TENANTS' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-slate-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود A</Badge>
+                             <span className="font-black text-slate-900">الاسم الأول</span>
+                          </div>
+                          <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-slate-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود B</Badge>
+                             <span className="font-black text-slate-900">اسم العائلة</span>
+                          </div>
+                          <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-slate-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود C</Badge>
+                             <span className="font-black text-slate-900">البريد الإلكتروني</span>
+                          </div>
+                          <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-slate-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود D</Badge>
+                             <span className="font-black text-slate-900">رقم الهاتف</span>
+                          </div>
+                          <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between opacity-80 hover:opacity-100 hover:border-slate-300 transition-all">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود E</Badge>
+                             <span className="font-bold text-slate-700">نوع الهوية</span>
+                          </div>
+                          <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between opacity-80 hover:opacity-100 hover:border-slate-300 transition-all">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود F</Badge>
+                             <span className="font-bold text-slate-700">رقم الهوية</span>
+                          </div>
+                          <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between opacity-80 hover:opacity-100 hover:border-slate-300 transition-all">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود G</Badge>
+                             <span className="font-bold text-slate-700">الجنسية</span>
+                          </div>
+                          <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                       </div>
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between opacity-80 hover:opacity-100 hover:border-slate-300 transition-all">
+                          <div className="flex items-center gap-3">
+                             <Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود H</Badge>
+                             <span className="font-bold text-slate-700">عنوان السكن</span>
+                          </div>
+                          <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                       </div>
+                    </div>
+                  )}
+
+                  {importTab === 'PROPERTIES' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود A</Badge><span className="font-black text-slate-900">الاسم</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود B</Badge><span className="font-black text-slate-900">النوع (COMMERCIAL, RESIDENTIAL)</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود C</Badge><span className="font-black text-slate-900">عنوان العقار</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود D</Badge><span className="font-black text-slate-900">المدينة</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود E</Badge><span className="font-black text-slate-900">محافظة/ولاية</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود F</Badge><span className="font-black text-slate-900">الرمز البريدي</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                    </div>
+                  )}
+
+                  {importTab === 'UNITS' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود A</Badge><span className="font-black text-slate-900">معرف العقار ID</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود B</Badge><span className="font-black text-slate-900">رقم الوحدة</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود C</Badge><span className="font-black text-slate-900">النوع (APARTMENT...)</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود D</Badge><span className="font-black text-slate-900">الحالة (AVAILABLE...)</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود E</Badge><span className="font-black text-slate-900">الإيجار الشهري</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود F</Badge><span className="font-black text-slate-900">العملة</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                    </div>
+                  )}
+
+                  {importTab === 'LEASES' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود A</Badge><span className="font-black text-slate-900">معرف المستأجر ID</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود B</Badge><span className="font-black text-slate-900">معرف الوحدة ID</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود C</Badge><span className="font-black text-slate-900">المدة بدءاً من</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود D</Badge><span className="font-black text-slate-900">المدة حتى</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود E</Badge><span className="font-black text-slate-900">قيمة الإيجار</span></div>
+                            <span className="text-rose-500 text-[10px] uppercase font-black tracking-wider bg-rose-50 px-2 py-1 rounded-md">مطلوب</span>
+                        </div>
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><Badge className="bg-white text-slate-900 border-slate-200 font-mono">العمود F</Badge><span className="font-black text-slate-900">العملة</span></div>
+                            <span className="text-slate-500 text-[10px] font-black tracking-wider">اختياري</span>
+                        </div>
+                    </div>
+                  )}
+               </div>
             </CardContent>
           </Card>
         </div>

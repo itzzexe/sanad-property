@@ -11,9 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate, getStatusColor } from "@/lib/utils";
-import { Plus, Search, FileText, Loader2, Trash2, Calendar, FileCheck, Landmark } from "lucide-react";
+import { Plus, Search, FileText, Loader2, Trash2, Calendar, FileCheck, Landmark, Paperclip, Eye, Download, Info, ShieldCheck, User, Building, Upload } from "lucide-react";
 import { useCurrency } from "@/context/currency-context";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { cn } from "@/lib/utils";
+import { useRef } from "react";
 
 export default function ContractsPage() {
   const { format } = useCurrency();
@@ -28,9 +30,35 @@ export default function ContractsPage() {
     paymentFrequency: "MONTHLY", securityDeposit: "", lateFeePercent: "5"
   });
   const [saving, setSaving] = useState(false);
+  const [selectedLease, setSelectedLease] = useState<any>(null);
+  const [showLeaseDetails, setShowLeaseDetails] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post("/leases/import", formData);
+      alert(`تم استيراد ${res.successCount || 0} سجل بنجاح.\n\n${res.errorsCount > 0 ? `أخطاء (${res.errorsCount}):\n` + res.errors.join('\n') : ''}`);
+      load();
+      loadDeps();
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ أثناء رفع الملف");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   useEffect(() => { load(); loadDeps(); }, [search]);
-
+  
   async function load() {
     try {
       const res = await api.get(`/leases?search=${search}&limit=50`);
@@ -46,7 +74,7 @@ export default function ContractsPage() {
         api.get("/units?limit=100"),
       ]);
       setTenants(t.data || []);
-      setUnits((u.data || []).filter((u: any) => u.status === 'AVAILABLE'));
+      setUnits((u.data || []).filter((u: any) => u.status === 'AVAILABLE' || u.status === 'RENTED'));
     } catch (err) { console.error(err); }
   }
 
@@ -82,6 +110,16 @@ export default function ContractsPage() {
     return statuses[status] || status;
   };
 
+  const translateFrequency = (freq: string) => {
+    const freqs: any = {
+      MONTHLY: "شهري",
+      QUARTERLY: "ربع سنوي",
+      SEMI_ANNUAL: "نصف سنوي",
+      ANNUAL: "سنوي",
+    };
+    return freqs[freq] || freq;
+  };
+
   return (
     <div className="space-y-10 page-enter p-2 md:p-6 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
@@ -94,9 +132,15 @@ export default function ContractsPage() {
             إدارة وتوثيق الالتزامات التعاقدية والأرشفة الرقمية للاتفاقيات
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold h-14 px-8 rounded-2xl shadow-lg shadow-indigo-600/20 gap-3 border-none hover:scale-105 transition-all">
-          <Plus className="w-5 h-5" /> إبرام عقد جديد
-        </Button>
+        <div className="flex items-center gap-3">
+          <input type="file" accept=".xlsx, .xls" className="hidden" ref={fileInputRef} onChange={handleImport} />
+          <Button disabled={importing} onClick={() => fileInputRef.current?.click()} variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold h-14 px-6 rounded-2xl gap-2 transition-all">
+            {importing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />} رفع إكسل
+          </Button>
+          <Button onClick={() => setShowCreate(true)} className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold h-14 px-8 rounded-2xl shadow-lg shadow-indigo-600/20 gap-3 border-none hover:scale-105 transition-all">
+            <Plus className="w-5 h-5" /> إبرام عقد جديد
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-end">
@@ -181,18 +225,37 @@ export default function ContractsPage() {
                         {translateStatus(lease.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="pl-8 text-left">
-                       {lease.status === 'ACTIVE' && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="w-9 h-9 rounded-xl hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors" 
-                          onClick={() => handleTerminate(lease.id)}
-                        >
-                          <Trash2 className="w-4.5 h-4.5" />
-                        </Button>
-                      )}
-                    </TableCell>
+                     <TableCell className="pl-8 text-left">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl hover:bg-slate-100 text-slate-600" onClick={() => {
+                            setSelectedLease(lease);
+                            setShowLeaseDetails(true);
+                          }}>
+                            <Eye className="w-4.5 h-4.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="w-9 h-9 rounded-xl hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 transition-colors" 
+                            onClick={() => {
+                              setSelectedLease(lease);
+                              setShowAttachments(true);
+                            }}
+                          >
+                            <Paperclip className="w-4.5 h-4.5" />
+                          </Button>
+                          {lease.status === 'ACTIVE' && (
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="w-9 h-9 rounded-xl hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors" 
+                             onClick={() => handleTerminate(lease.id)}
+                           >
+                             <Trash2 className="w-4.5 h-4.5" />
+                           </Button>
+                         )}
+                        </div>
+                     </TableCell>
                   </TableRow>
                  );
               })}
@@ -297,6 +360,116 @@ export default function ContractsPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lease Details Dialog */}
+      <Dialog open={showLeaseDetails} onOpenChange={setShowLeaseDetails}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white rounded-[32px] overflow-hidden p-0" dir="rtl">
+           <div className="p-8 space-y-8">
+              <DialogHeader className="text-right">
+                <div className="flex items-center gap-4">
+                   <div className="w-16 h-16 rounded-3xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+                     <FileCheck className="w-8 h-8" />
+                   </div>
+                   <div>
+                     <DialogTitle className="text-3xl font-black text-slate-900 leading-tight">تفاصيل عقد الإيجار</DialogTitle>
+                     <p className="text-slate-500 font-bold font-mono text-sm uppercase tracking-widest">{selectedLease?.leaseNumber}</p>
+                   </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+                    <p className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-1"><User className="w-3 h-3" /> الطرف الثاني (المستأجر)</p>
+                    <div className="space-y-1">
+                      <p className="font-black text-slate-900 text-xl">{selectedLease?.tenant?.firstName} {selectedLease?.tenant?.lastName}</p>
+                      <p className="text-sm font-bold text-indigo-600">{selectedLease?.tenant?.phone}</p>
+                      <p className="text-xs text-slate-600 font-medium">{selectedLease?.tenant?.email}</p>
+                    </div>
+                 </div>
+                 <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+                    <p className="text-[10px] text-slate-500 font-black uppercase flex items-center gap-1"><Building className="w-3 h-3" /> العين المؤجرة</p>
+                    <div className="space-y-1">
+                      <p className="font-black text-slate-900 text-xl">{selectedLease?.unit?.unitNumber}</p>
+                      <p className="text-sm font-bold text-indigo-600">{selectedLease?.unit?.property?.name}</p>
+                      <p className="text-xs text-slate-600 font-medium">{selectedLease?.unit?.property?.address}</p>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                 <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm text-center">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">تاريخ البدء</p>
+                    <p className="font-black text-slate-900">{selectedLease?.startDate ? formatDate(selectedLease.startDate) : '—'}</p>
+                 </div>
+                 <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm text-center">
+                    <p className="text-[10px] text-slate-500 font-black uppercase mb-1">تاريخ الانتهاء</p>
+                    <p className="font-black text-slate-900">{selectedLease?.endDate ? formatDate(selectedLease.endDate) : '—'}</p>
+                 </div>
+                 <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
+                    <p className="text-[10px] text-emerald-600 font-black uppercase mb-1">القيمة الإيجارية</p>
+                    <p className="text-lg font-black text-emerald-700">{format(selectedLease?.rentAmount, selectedLease?.currency)}</p>
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2">
+                       <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                       <span className="text-sm font-bold text-slate-700">حالة العقد القانونية:</span>
+                    </div>
+                    <Badge className={cn(
+                      "font-black px-4 h-8 rounded-lg",
+                      selectedLease?.status === 'ACTIVE' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                    )}>{translateStatus(selectedLease?.status)}</Badge>
+                 </div>
+                 <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2">
+                       <Calendar className="w-4 h-4 text-indigo-500" />
+                       <span className="text-sm font-bold text-slate-700">وتيرة سداد الدفعات:</span>
+                    </div>
+                    <span className="font-black text-slate-900">{translateFrequency(selectedLease?.paymentFrequency)}</span>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="p-8 bg-slate-50 flex gap-4">
+              <Button variant="ghost" onClick={() => setShowLeaseDetails(false)} className="flex-1 h-12 rounded-xl font-bold text-slate-600 hover:bg-slate-200">إغلاق</Button>
+              <Button className="flex-1 h-12 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl font-black gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
+                <Download className="w-5 h-5" /> استخراج نسخة العقد
+              </Button>
+           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attachments Dialog */}
+      <Dialog open={showAttachments} onOpenChange={setShowAttachments}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white rounded-[32px] p-8" dir="rtl">
+          <DialogHeader className="text-right mb-4">
+            <DialogTitle className="text-2xl font-black text-slate-900 leading-tight flex items-center gap-3">
+              <Paperclip className="w-6 h-6 text-indigo-600" />
+              مرفقات العقد: {selectedLease?.leaseNumber}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedLease && (
+            <AttachmentManager 
+              entityType="LEASE" 
+              entityId={selectedLease.id} 
+              title="العقود والملحقات"
+            />
+          )}
+
+          <div className="mt-8 flex justify-end">
+            <Button 
+              type="button"
+              onClick={() => setShowAttachments(false)} 
+              className="bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold px-8 rounded-xl"
+            >
+              إغلاق
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

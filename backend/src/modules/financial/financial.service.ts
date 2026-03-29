@@ -65,6 +65,22 @@ export class FinancialService {
     });
   }
 
+  async updateShareholder(id: string, data: any) {
+    return this.prisma.shareholder.update({
+      where: { id },
+      data: {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        sharePercent: data.sharePercent,
+      },
+    });
+  }
+
+  async deleteShareholder(id: string) {
+    return this.prisma.shareholder.delete({ where: { id } });
+  }
+
   async calculateProfit(propertyId: string, startDate: string, endDate: string) {
     const sDate = new Date(startDate);
     const eDate = new Date(endDate);
@@ -139,6 +155,10 @@ export class FinancialService {
     }));
 
     return this.prisma.profitDistribution.createMany({ data: records });
+  }
+
+  async deleteDistribution(id: string) {
+    return this.prisma.profitDistribution.delete({ where: { id } });
   }
 
   // ─── ASSETS & DEPRECIATION ───────────────────────────────

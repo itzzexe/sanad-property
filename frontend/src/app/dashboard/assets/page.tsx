@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { 
   Plus, Search, FileBadge, TrendingDown, Clock, 
   History as HistoryIcon, Calendar, Info, Loader2, DollarSign,
-  Building2, Trash2, ShieldCheck, FileText, ArrowDown
+  Building2, Trash2, ShieldCheck, FileText, ArrowDown, Paperclip
 } from "lucide-react";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,8 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [showAttachments, setShowAttachments] = useState(false);
   
   const [newAsset, setNewAsset] = useState({
     name: "",
@@ -193,6 +196,12 @@ export default function AssetsPage() {
                      </div>
                   </TableCell>
                   <TableCell className="text-left pr-6">
+                     <Button variant="ghost" size="icon" onClick={() => {
+                          setSelectedAsset(asset);
+                          setShowAttachments(true);
+                        }} className="h-9 w-9 text-slate-600 hover:text-[#6264A7] transition-all opacity-0 group-hover:opacity-100">
+                        <Paperclip className="w-4 h-4" />
+                     </Button>
                      <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-600 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100">
                         <Trash2 className="w-4 h-4" />
                      </Button>
@@ -248,6 +257,37 @@ export default function AssetsPage() {
                </DialogFooter>
             </form>
          </DialogContent>
+      </Dialog>
+
+      {/* Attachments Dialog */}
+      <Dialog open={showAttachments} onOpenChange={setShowAttachments}>
+        <DialogContent className="sm:max-w-[700px] border-none shadow-2xl bg-white rounded-xl p-8" dir="rtl">
+          <div className="h-1 bg-[#6264A7] absolute top-0 left-0 right-0" />
+          <DialogHeader className="text-right mb-4">
+            <DialogTitle className="text-2xl font-black text-[#242424] leading-tight flex items-center gap-3">
+              <Paperclip className="w-6 h-6 text-[#6264A7]" />
+              مرفقات الأصل: {selectedAsset?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedAsset && (
+            <AttachmentManager 
+              entityType="ASSET" 
+              entityId={selectedAsset.id} 
+              title="وثائق الملكية والصور"
+            />
+          )}
+
+          <div className="mt-8 flex justify-end">
+            <Button 
+              type="button"
+              onClick={() => setShowAttachments(false)} 
+              className="bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold px-8 rounded-md"
+            >
+              إغلاق
+            </Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );

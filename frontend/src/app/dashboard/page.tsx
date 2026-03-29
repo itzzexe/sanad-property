@@ -64,7 +64,7 @@ export function DashboardPage() {
       title: "إجمالي المحصلات",
       value: format(stats?.payments?.revenue || 0),
       icon: CreditCard,
-      change: "+12.5%",
+      change: null,
       positive: true,
       sub: "الأرباح التشغيلية"
     },
@@ -72,7 +72,7 @@ export function DashboardPage() {
       title: "الوحدات العقارية",
       value: stats?.units?.total || 0,
       icon: Building2,
-      change: `${stats?.units?.rented || 0} نشط`,
+      change: null,
       positive: true,
       sub: "المحفظة الاستثمارية"
     },
@@ -80,7 +80,7 @@ export function DashboardPage() {
       title: "معدل الإشغال",
       value: `${stats?.occupancyRate || 0}%`,
       icon: Target,
-      change: "زيادة 0.4%",
+      change: null,
       positive: (stats?.occupancyRate || 0) > 70,
       sub: "كفاءة التشغيل"
     },
@@ -88,7 +88,7 @@ export function DashboardPage() {
       title: "نفقات وإهلاك",
       value: format((stats?.expenses?.total || 0) + (stats?.assets?.depreciation || 0)),
       icon: TrendingUp,
-      change: "-5.2%",
+      change: null,
       positive: false,
       sub: "تكاليف وخصومات"
     },

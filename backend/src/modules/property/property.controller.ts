@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PropertyService } from './property.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -18,6 +19,16 @@ export class PropertyController {
   @ApiOperation({ summary: 'Create a new property' })
   create(@Body() dto: CreatePropertyDto, @Req() req: any) {
     return this.propertyService.create(dto, req.user.sub);
+  }
+
+  @Post('import')
+  @ApiOperation({ summary: 'Import properties from Excel file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(FileInterceptor('file'))
+  async importExcel(@UploadedFile() file: any, @Req() req: any) {
+    if (!file) throw new BadRequestException('لم يتم رفع أي ملف');
+    return this.propertyService.importExcel(file.buffer, req.user.sub);
   }
 
   @Get()

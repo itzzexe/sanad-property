@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
@@ -78,5 +79,59 @@ export class UnitService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  async importExcel(buffer: Buffer) {
+    if (!buffer) throw new BadRequestException('لم يتم رفع أي ملف');
+    
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as any);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) throw new BadRequestException('ملف الإكسل فارغ');
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+      if (!row.hasValues) continue;
+
+      const values = row.values as any[];
+      const propertyId = values[1]?.toString()?.trim();
+      const unitNumber = values[2]?.toString()?.trim();
+      const typeStr = values[3]?.toString()?.trim() || 'APARTMENT';
+      const statusStr = values[4]?.toString()?.trim() || 'AVAILABLE';
+      const monthlyRentStr = values[5]?.toString()?.trim();
+      const currencyStr = values[6]?.toString()?.trim() || 'IQD';
+      const floorStr = values[7]?.toString()?.trim();
+      const areaStr = values[8]?.toString()?.trim();
+      const bedroomsStr = values[9]?.toString()?.trim();
+      const bathroomsStr = values[10]?.toString()?.trim();
+
+      if (!propertyId || !unitNumber || !monthlyRentStr) {
+         errors.push(`السطر ${rowNumber}: بيانات ناقصة (معرف العقار، رقم الوحدة، أو الإيجار)`);
+         continue;
+      }
+
+      try {
+        await this.create({
+          propertyId,
+          unitNumber,
+          type: typeStr as any,
+          status: statusStr as any,
+          monthlyRent: parseFloat(monthlyRentStr),
+          currency: currencyStr as any,
+          floor: floorStr ? parseInt(floorStr) : undefined,
+          area: areaStr ? parseFloat(areaStr) : undefined,
+          bedrooms: bedroomsStr ? parseInt(bedroomsStr) : undefined,
+          bathrooms: bathroomsStr ? parseInt(bathroomsStr) : undefined,
+        });
+        successCount++;
+      } catch (error: any) {
+        errors.push(`السطر ${rowNumber}: ${error.message || 'خطأ غير معروف'}`);
+      }
+    }
+
+    return { success: true, successCount, errorsCount: errors.length, errors };
   }
 }

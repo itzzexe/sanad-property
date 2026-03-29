@@ -7,6 +7,9 @@ async function main() {
 
   try {
     // Delete in reverse order of relationships
+    await prisma.attachment.deleteMany();
+    console.log('✅ Attachments cleared');
+
     await prisma.receipt.deleteMany();
     console.log('✅ Receipts cleared');
 

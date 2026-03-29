@@ -11,7 +11,6 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @ApiTags('settings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('settings')
 export class SettingsController {
   constructor(
@@ -25,6 +24,7 @@ export class SettingsController {
     return this.settingsService.getSettings();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   @Put()
   @ApiOperation({ summary: 'Update global system settings (Admin only)' })
@@ -32,6 +32,7 @@ export class SettingsController {
     return this.settingsService.updateSettings(body, req.user.sub);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get('audit')
   @ApiOperation({ summary: 'Get system audit logs (Admin only)' })
