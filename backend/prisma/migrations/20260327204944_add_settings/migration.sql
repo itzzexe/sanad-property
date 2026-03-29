@@ -1,6 +1,10 @@
 -- AlterEnum
 ALTER TYPE "Currency" ADD VALUE 'IQD';
 
+-- Workaround for Prisma Postgres Migration enum issue
+COMMIT;
+BEGIN;
+
 -- AlterTable
 ALTER TABLE "installments" ALTER COLUMN "currency" SET DEFAULT 'IQD';
 
