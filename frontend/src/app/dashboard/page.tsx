@@ -19,7 +19,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 
-export function DashboardPage() {
+export default function DashboardPage() {
   const { format, convert, displayCurrency, exchangeRate, loading: currencyLoading } = useCurrency();
   const [stats, setStats] = useState<any>(null);
   const [revenueData, setRevenueData] = useState<any[]>([]);
@@ -281,5 +281,3 @@ export function DashboardPage() {
     </div>
   );
 }
-
-export default DashboardPage;
