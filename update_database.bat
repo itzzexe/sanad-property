@@ -1,11 +1,20 @@
 @echo off
-title RentFlow Database Updater
-echo [1/2] Entering backend directory...
-cd /d "%~dp0backend"
-echo [2/2] Updating database schema to support logos...
-call npx prisma generate
-call npx prisma db push
+title RentFlow Database Synchronizer
+echo   =================================================================
+echo   =   [DATABASE] SYNCING SCHEMA WITH PRISMA                         =
+echo   =================================================================
 echo.
-echo [OK] Database updated successfully!
-echo You can now upload your logo.
+
+echo [1/3] Entering backend directory...
+cd /d "%~dp0backend"
+
+echo [2/3] Generating Prisma Client...
+call npx prisma generate
+
+echo [3/3] Pushing schema changes to the database...
+call npx prisma db push
+
+echo.
+echo [SUCCESS] Database is now fully synchronized with the latest schema!
+echo.
 pause

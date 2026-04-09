@@ -2,10 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class PaymentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly eventEmitter: EventEmitter2) {}
 
   async create(dto: CreatePaymentDto) {
     const lease = await this.prisma.lease.findFirst({
@@ -30,7 +31,9 @@ export class PaymentService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    let markedPaidInst: any = null;
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.create({
         data: {
           paymentNumber,
@@ -55,19 +58,59 @@ export class PaymentService {
         const inst = await tx.installment.findUnique({ where: { id: dto.installmentId } });
         if (inst) {
           const newPaidAmount = inst.paidAmount + dto.amount;
+          const newStatus = newPaidAmount >= inst.amount ? 'PAID' : 'PARTIALLY_PAID';
           await tx.installment.update({
             where: { id: dto.installmentId },
             data: {
               paidAmount: newPaidAmount,
               lateFee,
-              status: newPaidAmount >= inst.amount ? 'PAID' : 'PARTIALLY_PAID',
+              status: newStatus,
             },
           });
+          if (newStatus === 'PAID' && inst.status !== 'PAID') {
+            markedPaidInst = { ...inst, status: 'PAID' }; // trigger emit later
+          }
         }
       }
 
       return payment;
     });
+
+    this.eventEmitter.emit('payment.created', {
+      paymentId: result.id,
+      amount: result.amount,
+      currency: result.currency ?? 'USD',
+      exchangeRate: 1,
+      method: result.method,
+    });
+    
+    if ((dto as any).type === 'SECURITY_DEPOSIT' || (result.notes && result.notes.includes('SECURITY_DEPOSIT'))) {
+      this.eventEmitter.emit('payment.security_deposit', {
+        paymentId: result.id,
+        amount: result.amount,
+        currency: result.currency ?? 'USD',
+        tenantId: result.lease.tenantId,
+      });
+    }
+
+    if (lateFee > 0 && dto.installmentId) {
+      this.eventEmitter.emit('installment.late_fee_applied', {
+        installmentId: dto.installmentId,
+        lateFeeAmount: lateFee,
+        currency: lease.currency ?? 'USD',
+      });
+    }
+
+    if (markedPaidInst) {
+      this.eventEmitter.emit('installment.paid', {
+        installmentId: markedPaidInst.id,
+        amount: markedPaidInst.amount,
+        currency: markedPaidInst.currency ?? 'USD',
+        dueDate: markedPaidInst.dueDate,
+      });
+    }
+
+    return result;
   }
 
   async findAll(query: any) {

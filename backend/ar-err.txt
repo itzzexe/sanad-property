@@ -1,0 +1,10 @@
+  ● Test suite failed to run
+
+    [96msrc/modules/accounts-receivable/ar.service.ts[0m:[93m257[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'writeOff' does not exist on type 'PrismaService'.
+
+    [7m257[0m     return this.prisma.writeOff.create({
+    [7m   [0m [91m                       ~~~~~~~~[0m
+    [96msrc/modules/accounts-receivable/ar.service.ts[0m:[93m297[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'creditMemo' does not exist on type 'PrismaService'.
+
+    [7m297[0m     return this.prisma.creditMemo.create({
+    [7m   [0m [91m                       ~~~~~~~~~~[0m

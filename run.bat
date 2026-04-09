@@ -13,7 +13,13 @@ echo   =                                                               =
 echo   =================================================================
 echo.
 
+:: --- Step 0: Cleanup ---
+echo [0/4] [CLEANUP] Ensuring ports are free...
+taskkill /F /IM node.exe /T >nul 2>&1
+echo [OK] Old Node processes cleared.
+
 :: --- Step 1: Check Docker Status ---
+echo.
 echo [1/4] [INFRA] Checking Infrastructure (PostgreSQL / MinIO)...
 docker info >nul 2>&1
 if %errorlevel% neq 0 (
@@ -25,37 +31,35 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-:: Start only the essential infrastructure services (DB & Storage)
-:: Using --force-recreate to avoid container name conflicts
-docker-compose up -d --remove-orphans --force-recreate postgres minio
+:: Start only the essential infrastructure services operations
+docker start rentflow-minio >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Failed to start Docker services.
-    pause
-    exit /b
+    docker-compose up -d minio
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to start Docker services.
+        pause
+        exit /b
+    )
 )
 echo [OK] Base infrastructure is online.
 
 :: --- Step 2: Database Preparation ---
 echo.
-echo [2/4] [DB] Preparing Database (Migrations ^& Seed)...
+echo [2/4] [DB] Preparing Database (Schema Push)...
 cd /d "%~dp0backend"
+if not exist "node_modules\" (
+    echo [BACKEND] Installing dependencies...
+    call npm install
+)
+echo [BACKEND] Generating Prisma Client...
 call npx prisma generate
-:: This creates tables if they don't exist
-:: call npx prisma db push --skip-generate
-:: Removed seed call to keep real data
-:: call npm run prisma:seed
-echo [OK] Database is ready.
+echo [BACKEND] Pushing schema to DB...
+call npx prisma db push --skip-generate
+echo [OK] Database is ready and synced.
 
 :: --- Step 3: Start Backend ---
 echo.
 echo [3/4] [API] Launching Backend Server (NestJS - Port 4000)...
-if not exist "%~dp0backend\node_modules\" (
-    echo.
-    echo [ERROR] backend/node_modules not found!
-    echo [!] Action: Please run "npm install" in the backend directory first.
-    pause
-    exit /b
-)
 start "RentFlow API" cmd /k "cd /d "%~dp0backend" && echo [BACKEND] Starting... && npm run start:dev"
 echo [OK] Backend terminal window opened.
 
@@ -64,10 +68,9 @@ echo.
 echo [4/4] [UI] Launching Frontend Dashboard (Next.js - Port 3000)...
 if not exist "%~dp0frontend\node_modules\" (
     echo.
-    echo [ERROR] frontend/node_modules not found!
-    echo [!] Action: Please run "npm install" in the frontend directory first.
-    pause
-    exit /b
+    echo [FRONTEND] node_modules not found, installing...
+    cd /d "%~dp0frontend"
+    call npm install
 )
 start "RentFlow UI" cmd /k "cd /d "%~dp0frontend" && echo [FRONTEND] Starting... && npm run dev"
 echo [OK] Frontend terminal window opened.
@@ -79,7 +82,7 @@ echo [SUCCESS] RentFlow ecosystem is initializing...
 echo -----------------------------------------------------------------
 echo [DASHBOARD]  http://localhost:3000
 echo [API SERVER] http://localhost:4000
-echo [API DOCS]   http://localhost:4000/api/docs
+echo [API DOCS]   http://localhost:4000/docs
 echo [STORAGE]    http://localhost:9001 (MinIO Console)
 echo -----------------------------------------------------------------
 echo [!] Keep the terminal windows open while working.

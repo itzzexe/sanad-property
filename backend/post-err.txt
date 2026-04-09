@@ -1,0 +1,10 @@
+  ظù Test suite failed to run
+
+    [96msrc/modules/account/account.service.ts[0m:[93m162[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'children' does not exist on type '{ id: string; code: string; name: string; type: AccountType; subtype: string | null; parentId: string | null; currency: string; isSystem: boolean; isActive: boolean; description: string | null; createdAt: Date; updatedAt: Date; }'.
+
+    [7m162[0m     if (account.children && account.children.length > 0) {
+    [7m   [0m [91m                ~~~~~~~~[0m
+    [96msrc/modules/account/account.service.ts[0m:[93m162[0m:[93m37[0m - [91merror[0m[90m TS2339: [0mProperty 'children' does not exist on type '{ id: string; code: string; name: string; type: AccountType; subtype: string | null; parentId: string | null; currency: string; isSystem: boolean; isActive: boolean; description: string | null; createdAt: Date; updatedAt: Date; }'.
+
+    [7m162[0m     if (account.children && account.children.length > 0) {
+    [7m   [0m [91m                                    ~~~~~~~~[0m

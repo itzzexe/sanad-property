@@ -1,0 +1,6 @@
+  ظù Test suite failed to run
+
+    [96msrc/prisma/prisma.service.ts[0m:[93m8[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'datasources' does not exist in type 'Subset<PrismaClientOptions, PrismaClientOptions>'.
+
+    [7m8[0m       datasources: {
+    [7m [0m [91m      ~~~~~~~~~~~[0m

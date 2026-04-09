@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── ENUMS ───────────────────────────────────────────────
@@ -97,23 +97,99 @@ enum ExpenseCategory {
   OTHER
 }
 
+enum FiscalYearStatus {
+  OPEN
+  CLOSED
+}
+
+enum FiscalPeriodStatus {
+  OPEN
+  CLOSING
+  CLOSED
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
+enum JournalSourceType {
+  MANUAL
+  PAYMENT
+  INSTALLMENT
+  LATE_FEE
+  LEASE_START
+  LEASE_END
+  DEPOSIT_IN
+  DEPOSIT_OUT
+  ADJUSTMENT
+  CLOSING
+  REVERSAL
+  FX_REVALUATION
+  WRITE_OFF
+  CREDIT_MEMO
+  BILL
+  BILL_PAYMENT
+}
+
+enum FxSource {
+  MANUAL
+  API
+}
+
+enum BillStatus {
+  DRAFT
+  POSTED
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum TaxType {
+  VAT
+  WITHHOLDING
+  MUNICIPAL
+  SALES
+  OTHER
+}
+
+enum ReconciliationStatus {
+  PENDING
+  IN_PROGRESS
+  RECONCILED
+}
+
+enum BankTxnType {
+  CREDIT
+  DEBIT
+}
+
 // ─── MODELS ──────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  password      String
-  firstName     String    @map("first_name")
-  lastName      String    @map("last_name")
-  role          UserRole  @default(OWNER)
-  phone         String?
-  avatar        String?
-  isActive      Boolean   @default(true) @map("is_active")
-  refreshToken  String?   @map("refresh_token")
-  lastLoginAt   DateTime? @map("last_login_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  role         UserRole  @default(OWNER)
+  phone        String?
+  avatar       String?
+  isActive     Boolean   @default(true) @map("is_active")
+  refreshToken String?   @map("refresh_token")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
   properties    Property[]
   auditLogs     AuditLog[]
@@ -140,52 +216,52 @@ model Property {
   deletedAt   DateTime? @map("deleted_at")
 
   // General Information
-  issuer                  String?   @map("issuer")
-  registrationDirectorate String?   @map("registration_directorate")
-  formType                String?   @map("form_type")
+  issuer                  String? @map("issuer")
+  registrationDirectorate String? @map("registration_directorate")
+  formType                String? @map("form_type")
 
   // Current Permanent Record
-  governorate             String?   @map("governorate")
-  district                String?   @map("district")
-  subDistrict             String?   @map("sub_district")
-  street                  String?   @map("street")
-  recordNumber            String?   @map("record_number")
-  recordDate              DateTime? @map("record_date")
-  recordVolume            String?   @map("record_volume")
+  governorate  String?   @map("governorate")
+  district     String?   @map("district")
+  subDistrict  String?   @map("sub_district")
+  street       String?   @map("street")
+  recordNumber String?   @map("record_number")
+  recordDate   DateTime? @map("record_date")
+  recordVolume String?   @map("record_volume")
 
   // Transferred From Record
-  prevRecordNumber        String?   @map("prev_record_number")
-  prevRecordDate          DateTime? @map("prev_record_date")
-  prevRecordVolume        String?   @map("prev_record_volume")
-  propertySequence        String?   @map("property_sequence")
-  neighborhoodName        String?   @map("neighborhood_name")
-  doorNumber              String?   @map("door_number")
-  plotNumber              String?   @map("plot_number")
-  sectionNumber           String?   @map("section_number")
-  sectionName             String?   @map("section_name")
+  prevRecordNumber String?   @map("prev_record_number")
+  prevRecordDate   DateTime? @map("prev_record_date")
+  prevRecordVolume String?   @map("prev_record_volume")
+  propertySequence String?   @map("property_sequence")
+  neighborhoodName String?   @map("neighborhood_name")
+  doorNumber       String?   @map("door_number")
+  plotNumber       String?   @map("plot_number")
+  sectionNumber    String?   @map("section_number")
+  sectionName      String?   @map("section_name")
 
   // Ownership & Property Details
-  ownerNationality        String?   @map("owner_nationality")
-  boundaries              String?   @default("كما في الخارطة") @map("boundaries")
-  propertyGender          String?   @map("property_gender")
-  propertyTypeDetailed    String?   @map("property_type_detailed") 
-  contents                String?   @map("contents")
-  easements               String?   @map("easements")
-  areaSqm                 Float?    @map("area_sqm")
-  areaOlk                 Float?    @map("area_olk")
-  areaDonum               Float?    @map("area_donum")
+  ownerNationality     String? @map("owner_nationality")
+  boundaries           String? @default("كما في الخارطة") @map("boundaries")
+  propertyGender       String? @map("property_gender")
+  propertyTypeDetailed String? @map("property_type_detailed")
+  contents             String? @map("contents")
+  easements            String? @map("easements")
+  areaSqm              Float?  @map("area_sqm")
+  areaOlk              Float?  @map("area_olk")
+  areaDonum            Float?  @map("area_donum")
 
   // Registration Details
-  registrationNature      String?   @map("registration_nature")
-  insuranceNotes          String?   @map("insurance_notes")
-  deedRuling              String?   @map("deed_ruling")
+  registrationNature String? @map("registration_nature")
+  insuranceNotes     String? @map("insurance_notes")
+  deedRuling         String? @map("deed_ruling")
 
   // Certification
-  requestingEntity        String?   @map("requesting_entity")
-  certificationDate       DateTime? @map("certification_date")
+  requestingEntity  String?   @map("requesting_entity")
+  certificationDate DateTime? @map("certification_date")
 
-  owner       User      @relation(fields: [ownerId], references: [id])
-  units       Unit[]
+  owner         User                 @relation(fields: [ownerId], references: [id])
+  units         Unit[]
   expenses      Expense[]
   shareholders  Shareholder[]
   distributions ProfitDistribution[]
@@ -196,26 +272,26 @@ model Property {
 }
 
 model Unit {
-  id           String     @id @default(uuid())
-  unitNumber   String     @map("unit_number")
-  type         UnitType   @default(APARTMENT)
-  status       UnitStatus @default(AVAILABLE)
-  floor        Int?
-  area         Float?
-  bedrooms     Int?
-  bathrooms    Int?
-  monthlyRent  Float      @map("monthly_rent")
-  currency     Currency   @default(IQD)
-  description  String?
-  propertyId   String     @map("property_id")
-  isActive     Boolean    @default(true) @map("is_active")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-  deletedAt    DateTime?  @map("deleted_at")
+  id          String     @id @default(uuid())
+  unitNumber  String     @map("unit_number")
+  type        UnitType   @default(APARTMENT)
+  status      UnitStatus @default(AVAILABLE)
+  floor       Int?
+  area        Float?
+  bedrooms    Int?
+  bathrooms   Int?
+  monthlyRent Float      @map("monthly_rent")
+  currency    Currency   @default(IQD)
+  description String?
+  propertyId  String     @map("property_id")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
 
-  property     Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  leases       Lease[]
-  expenses     Expense[]
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  leases   Lease[]
+  expenses Expense[]
 
   @@unique([propertyId, unitNumber])
   @@index([propertyId])
@@ -243,7 +319,9 @@ model Tenant {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
-  leases         Lease[]
+  leases      Lease[]
+  writeOffs   WriteOff[]
+  creditMemos CreditMemo[]
 
   @@index([email])
   @@map("tenants")
@@ -270,10 +348,10 @@ model Lease {
   updatedAt        DateTime         @updatedAt @map("updated_at")
   deletedAt        DateTime?        @map("deleted_at")
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
-  unit             Unit             @relation(fields: [unitId], references: [id])
-  payments         Payment[]
-  installments     Installment[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  unit         Unit          @relation(fields: [unitId], references: [id])
+  payments     Payment[]
+  installments Installment[]
 
   @@index([tenantId])
   @@index([unitId])
@@ -282,25 +360,25 @@ model Lease {
 }
 
 model Payment {
-  id            String        @id @default(uuid())
-  paymentNumber String        @unique @map("payment_number")
-  leaseId       String        @map("lease_id")
-  amount        Float
-  currency      Currency      @default(IQD)
-  method        PaymentMethod @default(CASH)
-  status        PaymentStatus @default(COMPLETED)
-  paidDate      DateTime      @default(now()) @map("paid_date")
-  notes         String?
-  lateFee       Float         @default(0) @map("late_fee")
-  transactionRef String?      @map("transaction_ref")
-  isActive      Boolean       @default(true) @map("is_active")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  deletedAt     DateTime?     @map("deleted_at")
+  id             String        @id @default(uuid())
+  paymentNumber  String        @unique @map("payment_number")
+  leaseId        String        @map("lease_id")
+  amount         Float
+  currency       Currency      @default(IQD)
+  method         PaymentMethod @default(CASH)
+  status         PaymentStatus @default(COMPLETED)
+  paidDate       DateTime      @default(now()) @map("paid_date")
+  notes          String?
+  lateFee        Float         @default(0) @map("late_fee")
+  transactionRef String?       @map("transaction_ref")
+  isActive       Boolean       @default(true) @map("is_active")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
 
-  lease         Lease         @relation(fields: [leaseId], references: [id])
-  installment   Installment?  @relation(fields: [installmentId], references: [id])
-  installmentId String?       @map("installment_id")
+  lease         Lease        @relation(fields: [leaseId], references: [id])
+  installment   Installment? @relation(fields: [installmentId], references: [id])
+  installmentId String?      @map("installment_id")
   receipt       Receipt?
 
   @@index([leaseId])
@@ -309,20 +387,20 @@ model Payment {
 }
 
 model Installment {
-  id            String            @id @default(uuid())
-  leaseId       String            @map("lease_id")
-  dueDate       DateTime          @map("due_date")
-  amount        Float
-  currency      Currency          @default(IQD)
-  paidAmount    Float             @default(0) @map("paid_amount")
-  lateFee       Float             @default(0) @map("late_fee")
-  status        InstallmentStatus @default(PENDING)
-  isActive      Boolean           @default(true) @map("is_active")
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  id         String            @id @default(uuid())
+  leaseId    String            @map("lease_id")
+  dueDate    DateTime          @map("due_date")
+  amount     Float
+  currency   Currency          @default(IQD)
+  paidAmount Float             @default(0) @map("paid_amount")
+  lateFee    Float             @default(0) @map("late_fee")
+  status     InstallmentStatus @default(PENDING)
+  isActive   Boolean           @default(true) @map("is_active")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
 
-  lease         Lease             @relation(fields: [leaseId], references: [id])
-  payments      Payment[]
+  lease    Lease     @relation(fields: [leaseId], references: [id])
+  payments Payment[]
 
   @@index([leaseId])
   @@index([dueDate])
@@ -339,7 +417,7 @@ model Receipt {
   issuedAt      DateTime @default(now()) @map("issued_at")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  payment       Payment  @relation(fields: [paymentId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
 
   @@index([receiptNumber])
   @@map("receipts")
@@ -355,7 +433,7 @@ model Notification {
   metadata  Json?
   createdAt DateTime         @default(now()) @map("created_at")
 
-  user      User             @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([isRead])
@@ -363,18 +441,18 @@ model Notification {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  action     String
-  entity     String
-  entityId   String   @map("entity_id")
-  oldValue   Json?    @map("old_value")
-  newValue   Json?    @map("new_value")
-  ipAddress  String?  @map("ip_address")
-  userAgent  String?  @map("user_agent")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  oldValue  Json?    @map("old_value")
+  newValue  Json?    @map("new_value")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  user       User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([entity, entityId])
@@ -383,7 +461,7 @@ model AuditLog {
 }
 
 model SystemSettings {
-  id              String   @id @default(uuid())
+  id               String   @id @default(uuid())
   organizationName String   @default("RentFlow") @map("organization_name")
   address          String?
   description      String?
@@ -412,8 +490,8 @@ model Expense {
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
 
-  property    Property?       @relation(fields: [propertyId], references: [id])
-  unit        Unit?           @relation(fields: [unitId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+  unit     Unit?     @relation(fields: [unitId], references: [id])
 
   @@index([propertyId])
   @@index([category])
@@ -421,16 +499,16 @@ model Expense {
 }
 
 model Shareholder {
-  id          String   @id @default(uuid())
-  name        String
-  email       String?
-  phone       String?
+  id           String   @id @default(uuid())
+  name         String
+  email        String?
+  phone        String?
   sharePercent Float    @map("share_percent") // e.g. 25.0
-  propertyId  String   @map("property_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  propertyId   String   @map("property_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  property    Property @relation(fields: [propertyId], references: [id])
+  property      Property             @relation(fields: [propertyId], references: [id])
   distributions ProfitDistribution[]
 
   @@index([propertyId])
@@ -438,18 +516,18 @@ model Shareholder {
 }
 
 model ProfitDistribution {
-  id            String      @id @default(uuid())
-  shareholderId String      @map("shareholder_id")
-  propertyId    String      @map("property_id")
+  id            String   @id @default(uuid())
+  shareholderId String   @map("shareholder_id")
+  propertyId    String   @map("property_id")
   amount        Float
-  currency      Currency    @default(IQD)
-  periodStart   DateTime    @map("period_start")
-  periodEnd     DateTime    @map("period_end")
-  status        String      @default("PAID") // PAID, PENDING
-  distributedAt DateTime    @default(now()) @map("distributed_at")
+  currency      Currency @default(IQD)
+  periodStart   DateTime @map("period_start")
+  periodEnd     DateTime @map("period_end")
+  status        String   @default("PAID") // PAID, PENDING
+  distributedAt DateTime @default(now()) @map("distributed_at")
 
-  shareholder   Shareholder @relation(fields: [shareholderId], references: [id])
-  property      Property    @relation(fields: [propertyId], references: [id])
+  shareholder Shareholder @relation(fields: [shareholderId], references: [id])
+  property    Property    @relation(fields: [propertyId], references: [id])
 
   @@index([shareholderId])
   @@index([propertyId])
@@ -457,20 +535,20 @@ model ProfitDistribution {
 }
 
 model Asset {
-  id              String   @id @default(uuid())
-  name            String
-  value           Float
-  currency        Currency @default(IQD)
-  purchaseDate    DateTime @map("purchase_date")
+  id               String   @id @default(uuid())
+  name             String
+  value            Float
+  currency         Currency @default(IQD)
+  purchaseDate     DateTime @map("purchase_date")
   depreciationRate Float    @map("depreciation_rate") // e.g. 10% per year
-  usefulLifeYears Int      @map("useful_life_years")
-  propertyId      String   @map("property_id")
-  description     String?
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  usefulLifeYears  Int      @map("useful_life_years")
+  propertyId       String   @map("property_id")
+  description      String?
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  property        Property @relation(fields: [propertyId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
 
   @@index([propertyId])
   @@map("assets")
@@ -480,7 +558,7 @@ model Attachment {
   id         String   @id @default(uuid())
   url        String
   name       String
-  type       String   // e.g., 'image/png', 'application/pdf'
+  type       String // e.g., 'image/png', 'application/pdf'
   size       Int?
   entityType String   @map("entity_type") // e.g., 'PROPERTY', 'UNIT', 'TENANT', 'LEASE', 'PAYMENT', 'EXPENSE', 'ASSET'
   entityId   String   @map("entity_id")
@@ -489,4 +567,383 @@ model Attachment {
 
   @@index([entityType, entityId])
   @@map("attachments")
+}
+
+enum BudgetStatus {
+  DRAFT
+  APPROVED
+  ARCHIVED
+}
+
+model FiscalYear {
+  id        String           @id @default(cuid())
+  name      String           @unique // e.g. "FY-2025"
+  startDate DateTime
+  endDate   DateTime
+  status    FiscalYearStatus @default(OPEN)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  periods   FiscalPeriod[]
+  budgets   Budget[]
+
+  @@map("fiscal_years")
+}
+
+model FiscalPeriod {
+  id           String             @id @default(cuid())
+  fiscalYearId String             @map("fiscal_year_id")
+  fiscalYear   FiscalYear         @relation(fields: [fiscalYearId], references: [id])
+  periodNumber Int                @map("period_number") // 1–12
+  name         String // e.g. "Jan 2025"
+  startDate    DateTime           @map("start_date")
+  endDate      DateTime           @map("end_date")
+  status       FiscalPeriodStatus @default(OPEN)
+  closedAt     DateTime?          @map("closed_at")
+  closedBy     String?            @map("closed_by")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  balances       AccountBalance[]
+  journalEntries JournalEntry[]
+  budgetLines    BudgetLine[]
+  fxRevaluations FxRevaluation[]
+
+  @@unique([fiscalYearId, periodNumber])
+  @@map("fiscal_periods")
+}
+
+model Account {
+  id                      String           @id @default(cuid())
+  code                    String           @unique // e.g. "1000"
+  name                    String
+  type                    AccountType
+  subtype                 String? // e.g. "CURRENT_ASSET", "OPERATING_REVENUE"
+  parentId                String?          @map("parent_id")
+  parent                  Account?         @relation("AccountChildren", fields: [parentId], references: [id])
+  children                Account[]        @relation("AccountChildren")
+  currency                String           @default("USD")
+  isSystem                Boolean          @default(false) @map("is_system")
+  isActive                Boolean          @default(true) @map("is_active")
+  description             String?
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
+  balances                AccountBalance[]
+  journalLines            JournalLine[]
+  budgetLines             BudgetLine[]
+  vendorsAsDefaultExpense Vendor[]         @relation("VendorExpenseAccount")
+  billsAsExpense          Bill[]           @relation("BillExpenseAccount")
+  taxRates                TaxRate[]
+  bankAccounts            BankAccount[]
+
+  @@map("accounts")
+}
+
+model AccountBalance {
+  id             String       @id @default(cuid())
+  accountId      String       @map("account_id")
+  account        Account      @relation(fields: [accountId], references: [id])
+  fiscalPeriodId String       @map("fiscal_period_id")
+  fiscalPeriod   FiscalPeriod @relation(fields: [fiscalPeriodId], references: [id])
+  debitTotal     Decimal      @default(0) @map("debit_total") @db.Decimal(18, 4)
+  creditTotal    Decimal      @default(0) @map("credit_total") @db.Decimal(18, 4)
+  openingBalance Decimal      @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  closingBalance Decimal      @default(0) @map("closing_balance") @db.Decimal(18, 4)
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@unique([accountId, fiscalPeriodId])
+  @@map("account_balances")
+}
+
+model JournalEntry {
+  id             String            @id @default(cuid())
+  entryNumber    String            @unique @map("entry_number")
+  date           DateTime
+  description    String
+  reference      String?
+  sourceType     JournalSourceType @default(MANUAL) @map("source_type")
+  status         JournalStatus     @default(DRAFT)
+  reversalOfId   String?           @unique @map("reversal_of_id")
+  reversalOf     JournalEntry?     @relation("Reversal", fields: [reversalOfId], references: [id])
+  reversedBy     JournalEntry?     @relation("Reversal")
+  fiscalPeriodId String            @map("fiscal_period_id")
+  fiscalPeriod   FiscalPeriod      @relation(fields: [fiscalPeriodId], references: [id])
+  createdById    String            @map("created_by_id")
+  postedById     String?           @map("posted_by_id")
+  postedAt       DateTime?         @map("posted_at")
+  notes          String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  lines         JournalLine[]
+  writeOff      WriteOff?
+  creditMemo    CreditMemo?
+  bill          Bill?
+  billPayment   BillPayment?
+  fxRevaluation FxRevaluation?
+  taxLines      TaxLine[]
+
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id                 String       @id @default(cuid())
+  journalEntryId     String       @map("journal_entry_id")
+  journalEntry       JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId          String       @map("account_id")
+  account            Account      @relation(fields: [accountId], references: [id])
+  debit              Decimal      @default(0) @db.Decimal(18, 4)
+  credit             Decimal      @default(0) @db.Decimal(18, 4)
+  description        String?
+  currencyCode       String?      @map("currency_code")
+  exchangeRate       Decimal?     @map("exchange_rate") @db.Decimal(18, 8)
+  baseCurrencyDebit  Decimal      @map("base_currency_debit") @db.Decimal(18, 4)
+  baseCurrencyCredit Decimal      @map("base_currency_credit") @db.Decimal(18, 4)
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  matchedBankTransaction BankTransaction?
+
+  @@map("journal_lines")
+}
+
+model Budget {
+  id           String       @id @default(cuid())
+  name         String
+  fiscalYearId String
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id])
+  propertyId   String? // null = company-level budget
+  status       BudgetStatus @default(DRAFT)
+  createdById  String
+  approvedById String?
+  approvedAt   DateTime?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  lines        BudgetLine[]
+}
+
+model BudgetLine {
+  id             String       @id @default(cuid())
+  budgetId       String
+  budget         Budget       @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId      String
+  account        Account      @relation(fields: [accountId], references: [id])
+  fiscalPeriodId String
+  fiscalPeriod   FiscalPeriod @relation(fields: [fiscalPeriodId], references: [id])
+  amount         Decimal      @db.Decimal(18, 4)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([budgetId, accountId, fiscalPeriodId])
+}
+
+model EntrySequence {
+  id           String @id @default(cuid())
+  fiscalYearId String @unique @map("fiscal_year_id")
+  lastSequence Int    @default(0) @map("last_sequence")
+
+  @@map("entry_sequence")
+}
+
+model WriteOff {
+  id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  amount         Decimal      @db.Decimal(18, 4)
+  currency       String       @default("USD")
+  reason         String
+  journalEntryId String       @unique
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  approvedById   String
+  createdAt      DateTime     @default(now())
+
+  @@map("write_offs")
+}
+
+model CreditMemo {
+  id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id])
+  amount         Decimal      @db.Decimal(18, 4)
+  currency       String       @default("USD")
+  reason         String
+  journalEntryId String       @unique
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  createdById    String
+  createdAt      DateTime     @default(now())
+
+  @@map("credit_memos")
+}
+
+model Vendor {
+  id                      String   @id @default(cuid())
+  name                    String
+  contactEmail            String?
+  phone                   String?
+  address                 String?
+  taxId                   String?
+  defaultExpenseAccountId String?
+  defaultExpenseAccount   Account? @relation("VendorExpenseAccount", fields: [defaultExpenseAccountId], references: [id])
+  isActive                Boolean  @default(true)
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  bills                   Bill[]
+  withholdingTaxRateId    String?
+  withholdingTaxRate      TaxRate? @relation("VendorWithholding", fields: [withholdingTaxRateId], references: [id])
+}
+
+model Bill {
+  id               String        @id @default(cuid())
+  vendorId         String
+  vendor           Vendor        @relation(fields: [vendorId], references: [id])
+  propertyId       String?
+  billNumber       String        @unique
+  billDate         DateTime
+  dueDate          DateTime
+  subtotal         Decimal       @db.Decimal(18, 4)
+  taxAmount        Decimal       @default(0) @db.Decimal(18, 4)
+  totalAmount      Decimal       @db.Decimal(18, 4) // subtotal + taxAmount
+  paidAmount       Decimal       @default(0) @db.Decimal(18, 4)
+  status           BillStatus    @default(DRAFT)
+  expenseAccountId String
+  expenseAccount   Account       @relation("BillExpenseAccount", fields: [expenseAccountId], references: [id])
+  description      String
+  journalEntryId   String?       @unique // set when bill is posted
+  journalEntry     JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  currency         String        @default("USD")
+  notes            String?
+  createdById      String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  payments         BillPayment[]
+}
+
+model BillPayment {
+  id             String       @id @default(cuid())
+  billId         String
+  bill           Bill         @relation(fields: [billId], references: [id])
+  amount         Decimal      @db.Decimal(18, 4)
+  paidAt         DateTime
+  paymentMethod  String
+  reference      String?
+  journalEntryId String       @unique
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  createdById    String
+  createdAt      DateTime     @default(now())
+}
+
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  fromCurrency String
+  toCurrency   String
+  rate         Decimal  @db.Decimal(18, 8)
+  date         DateTime @db.Date
+  source       FxSource @default(MANUAL)
+  createdAt    DateTime @default(now())
+
+  @@unique([fromCurrency, toCurrency, date])
+  @@map("exchange_rates")
+}
+
+model FxRevaluation {
+  id             String       @id @default(cuid())
+  fiscalPeriodId String       @map("fiscal_period_id")
+  fiscalPeriod   FiscalPeriod @relation(fields: [fiscalPeriodId], references: [id])
+  runAt          DateTime     @default(now()) @map("run_at")
+  journalEntryId String       @unique @map("journal_entry_id")
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  totalGainLoss  Decimal      @map("total_gain_loss") @db.Decimal(18, 4)
+  details        Json // array of { accountId, currency, originalBalance, revaluedBalance, gainLoss }
+
+  @@map("fx_revaluations")
+}
+
+model TaxRate {
+  id             String    @id @default(cuid())
+  name           String // e.g. "VAT 15%"
+  code           String    @unique // e.g. "VAT_15"
+  rate           Decimal   @db.Decimal(6, 4) // e.g. 0.1500 for 15%
+  type           TaxType
+  jurisdiction   String? // country or region code
+  accountId      String // GL account for this tax (e.g. Tax Payable 2300)
+  account        Account   @relation(fields: [accountId], references: [id])
+  applicableFrom DateTime
+  applicableTo   DateTime?
+  isDefault      Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  description    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  taxLines       TaxLine[]
+  vendors        Vendor[]  @relation("VendorWithholding")
+
+  @@map("tax_rates")
+}
+
+model TaxLine {
+  id             String       @id @default(cuid())
+  journalEntryId String       @map("journal_entry_id")
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  taxRateId      String       @map("tax_rate_id")
+  taxRate        TaxRate      @relation(fields: [taxRateId], references: [id])
+  taxableAmount  Decimal      @map("taxable_amount") @db.Decimal(18, 4)
+  taxAmount      Decimal      @map("tax_amount") @db.Decimal(18, 4)
+  taxAccountId   String       @map("tax_account_id")
+  isInput        Boolean      @map("is_input") // true = input tax (on purchases), false = output (on sales)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@map("tax_lines")
+}
+
+model BankAccount {
+  id            String          @id @default(cuid())
+  name          String // e.g. "Main Operating Account"
+  bankName      String          @map("bank_name")
+  accountNumber String          @map("account_number")
+  currency      String          @default("USD")
+  glAccountId   String          @map("gl_account_id") // links to Cash (1000) or a sub-account
+  glAccount     Account         @relation(fields: [glAccountId], references: [id])
+  isActive      Boolean         @default(true) @map("is_active")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  statements    BankStatement[]
+
+  @@map("bank_accounts")
+}
+
+model BankStatement {
+  id             String               @id @default(cuid())
+  bankAccountId  String               @map("bank_account_id")
+  bankAccount    BankAccount          @relation(fields: [bankAccountId], references: [id])
+  statementDate  DateTime             @map("statement_date") @db.Date
+  openingBalance Decimal              @map("opening_balance") @db.Decimal(18, 4)
+  closingBalance Decimal              @map("closing_balance") @db.Decimal(18, 4)
+  status         ReconciliationStatus @default(PENDING)
+  reconciledAt   DateTime?            @map("reconciled_at")
+  reconciledById String?              @map("reconciled_by_id")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  transactions   BankTransaction[]
+
+  @@map("bank_statements")
+}
+
+model BankTransaction {
+  id                   String        @id @default(cuid())
+  bankStatementId      String        @map("bank_statement_id")
+  bankStatement        BankStatement @relation(fields: [bankStatementId], references: [id], onDelete: Cascade)
+  transactionDate      DateTime      @map("transaction_date")
+  description          String
+  reference            String?
+  amount               Decimal       @db.Decimal(18, 4)
+  type                 BankTxnType // CREDIT or DEBIT
+  matchedJournalLineId String?       @unique @map("matched_journal_line_id")
+  matchedJournalLine   JournalLine?  @relation(fields: [matchedJournalLineId], references: [id])
+  matchedAt            DateTime?     @map("matched_at")
+  matchedById          String?       @map("matched_by_id")
+  isManualEntry        Boolean       @default(false) @map("is_manual_entry")
+  createdAt            DateTime      @default(now()) @map("created_at")
+
+  @@map("bank_transactions")
 }

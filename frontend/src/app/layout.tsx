@@ -11,7 +11,7 @@ import { CurrencyProvider } from "@/context/currency-context";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl" className="dark">
+    <html lang="ar" dir="rtl" className="dark" suppressHydrationWarning>
       <body>
         <CurrencyProvider>
           {children}

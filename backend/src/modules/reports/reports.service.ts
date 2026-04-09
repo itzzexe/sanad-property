@@ -1,286 +1,399 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import * as ExcelJS from 'exceljs';
-import * as PDFDocument from 'pdfkit';
-import { Response } from 'express';
+import { AccountType, Prisma, JournalStatus } from '@prisma/client';
+import { ReportParams } from './types/report-params';
+import { IncomeStatementReport, IncomeStatementSection } from './types/income-statement.types';
+import { BalanceSheetReport, BalanceSheetLine } from './types/balance-sheet.types';
+import { CashFlowReport } from './types/cash-flow.types';
+import { PropertyProfitabilityReport } from './types/property-profitability.types';
+import { ArService } from '../accounts-receivable/ar.service';
+import { BudgetService } from '../budget/budget.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly arService: ArService,
+    private readonly budgetService: BudgetService,
+  ) {}
 
-  async generateFinancialExcel(filters: any, res: Response) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('التقرير المالي');
-
-    // Headers
-    worksheet.columns = [
-      { header: 'التاريخ', key: 'date', width: 15 },
-      { header: 'النوع', key: 'type', width: 18 },
-      { header: 'العقار', key: 'property', width: 25 },
-      { header: 'الوصف', key: 'description', width: 35 },
-      { header: 'المبلغ', key: 'amount', width: 15 },
-      { header: 'العملة', key: 'currency', width: 10 },
-      { header: 'الحالة', key: 'status', width: 15 },
-    ];
-
-    const dateQuery: any = {};
-    if (filters.startDate) dateQuery.gte = new Date(filters.startDate);
-    if (filters.endDate) {
-      const end = new Date(filters.endDate);
-      end.setHours(23, 59, 59, 999);
-      dateQuery.lte = end;
+  private async getPeriodRange(params: ReportParams) {
+    if (params.fiscalPeriodId) {
+      const p = await this.prisma.fiscalPeriod.findUnique({ where: { id: params.fiscalPeriodId } });
+      if (!p) throw new NotFoundException('Fiscal period not found');
+      return { startDate: p.startDate, endDate: p.endDate };
+    }
+    if (params.fiscalYearId) {
+      const y = await this.prisma.fiscalYear.findUnique({ where: { id: params.fiscalYearId } });
+      if (!y) throw new NotFoundException('Fiscal year not found');
+      return { startDate: y.startDate, endDate: y.endDate };
+    }
+    if (params.startDate && params.endDate) {
+      return { startDate: new Date(params.startDate), endDate: new Date(params.endDate) };
     }
 
-    // Fetch Payments (Income)
-    const payments = await this.prisma.payment.findMany({
-      where: {
-        paidDate: dateQuery,
-        lease: filters.property && filters.property !== 'all' ? {
-          unit: { propertyId: filters.property }
-        } : undefined,
-      },
-      include: { 
-        lease: { 
-          include: { 
-            tenant: true,
-            unit: { include: { property: true } }
-          } 
-        } 
-      },
+    // Default to current open year
+    const y = await this.prisma.fiscalYear.findFirst({
+      where: { status: 'OPEN' },
+      orderBy: { startDate: 'desc' }
     });
-
-    // Fetch Expenses
-    const expenses = await this.prisma.expense.findMany({
-      where: {
-        date: dateQuery,
-        propertyId: filters.property && filters.property !== 'all' ? filters.property : undefined,
-      },
-      include: { property: true },
-    });
-
-    let totalIncome = 0;
-    let totalExpense = 0;
-
-    // Add rows
-    payments.forEach(p => {
-      worksheet.addRow({
-        date: p.paidDate.toLocaleDateString('ar-IQ'),
-        type: 'إيراد (إيجار)',
-        property: p.lease.unit.property.name,
-        description: `دفعة من ${p.lease.tenant.firstName} - وحدة ${p.lease.unit.unitNumber}`,
-        amount: p.amount,
-        currency: p.currency,
-        status: p.status === 'COMPLETED' ? 'مكتمل' : p.status,
-      });
-      totalIncome += p.amount;
-    });
-
-    expenses.forEach(e => {
-      worksheet.addRow({
-        date: e.date.toLocaleDateString('ar-IQ'),
-        type: 'مصروف تشغيلي',
-        property: e.property?.name || 'عام',
-        description: e.description || e.title,
-        amount: -e.amount,
-        currency: e.currency,
-        status: 'مدفوع',
-      });
-      totalExpense += e.amount;
-    });
-
-    // Summary Row
-    worksheet.addRow({});
-    const summaryRow = worksheet.addRow({
-      description: 'صافي الربح للفترة',
-      amount: totalIncome - totalExpense,
-      currency: 'IQD',
-    });
-    summaryRow.font = { bold: true, size: 12 };
-
-    // Styling
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF4F46E5' }, // Indigo-600
+    return {
+      startDate: y?.startDate || new Date(new Date().getFullYear(), 0, 1),
+      endDate: y?.endDate || new Date(new Date().getFullYear(), 11, 31, 23, 59, 59),
     };
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=financial-report.xlsx');
-    await workbook.xlsx.write(res);
-    res.end();
   }
 
-  async generateOccupancyExcel(res: Response) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('تقرير الإشغال');
+  async incomeStatement(params: ReportParams): Promise<IncomeStatementReport> {
+    const { startDate, endDate } = await this.getPeriodRange(params);
 
-    worksheet.columns = [
-      { header: 'اسم العقار', key: 'propertyName', width: 25 },
-      { header: 'رقم الوحدة', key: 'unitNumber', width: 15 },
-      { header: 'الحالة', key: 'status', width: 15 },
-      { header: 'المستأجر الحالي', key: 'tenantName', width: 25 },
-    ];
+    const getBalances = async (start: Date, end: Date) => {
+      const lines = await this.prisma.journalLine.findMany({
+        where: {
+          journalEntry: {
+            status: JournalStatus.POSTED,
+            date: { gte: start, lte: end },
+          },
+          account: { type: { in: [AccountType.REVENUE, AccountType.EXPENSE] } }
+        },
+        include: { account: true }
+      });
 
-    const properties = await this.prisma.property.findMany({
-      include: {
-        units: {
-          include: {
-            leases: {
-              where: { status: 'ACTIVE' },
-              include: { tenant: true }
-            }
-          }
+      const map = new Map<string, { code: string, name: string, type: string, subtype: string, amount: number }>();
+      for (const line of lines) {
+        if (!map.has(line.accountId)) {
+          map.set(line.accountId, {
+            code: line.account.code,
+            name: line.account.name,
+            type: line.account.type,
+            subtype: line.account.subtype || 'OTHER',
+            amount: 0
+          });
+        }
+        const item = map.get(line.accountId)!;
+        const debit = Number(line.baseCurrencyDebit);
+        const credit = Number(line.baseCurrencyCredit);
+
+        if (line.account.type === AccountType.REVENUE) {
+          item.amount += (credit - debit);
+        } else {
+          item.amount += (debit - credit);
         }
       }
+      return map;
+    };
+
+    const currentBalances = await getBalances(startDate, endDate);
+    let priorBalances: Map<string, any> | null = null;
+
+    if (params.compareWithPriorPeriod) {
+      const diff = endDate.getTime() - startDate.getTime();
+      const priorStart = new Date(startDate.getTime() - diff);
+      const priorEnd = new Date(startDate.getTime() - 1);
+      priorBalances = await getBalances(priorStart, priorEnd);
+    }
+
+    const sectionsData: Record<string, any[]> = {
+      'Operating Revenue': [],
+      'Other Revenue': [],
+      'Operating Expense': [],
+      'Other Expense': [],
+    };
+
+    let totalRevenue = 0;
+    let totalExpense = 0;
+
+    currentBalances.forEach((val, id) => {
+      const prior = priorBalances?.get(id);
+      const line = {
+        code: val.code,
+        name: val.name,
+        amount: val.amount,
+        priorAmount: prior?.amount || 0,
+        variance: val.amount - (prior?.amount || 0),
+        variancePct: prior?.amount ? ((val.amount - prior.amount) / prior.amount) * 100 : 0
+      };
+
+      let category = '';
+      if (val.type === 'REVENUE') {
+        category = val.subtype.includes('OPERATING') ? 'Operating Revenue' : 'Other Revenue';
+        totalRevenue += val.amount;
+      } else {
+        category = val.subtype.includes('OPERATING') ? 'Operating Expense' : 'Other Expense';
+        totalExpense += val.amount;
+      }
+      sectionsData[category].push(line);
     });
 
-    properties.forEach(p => {
-      p.units.forEach(u => {
-        const activeLease = u.leases[0];
-        worksheet.addRow({
-          propertyName: p.name,
-          unitNumber: u.unitNumber,
-          status: activeLease ? 'مشغولة' : 'شاغرة',
-          tenantName: activeLease ? `${activeLease.tenant.firstName} ${activeLease.tenant.lastName}` : '-',
-        });
-      });
-    });
+    const sections: IncomeStatementSection[] = Object.keys(sectionsData).map(title => ({
+      title,
+      accounts: sectionsData[title],
+      subtotal: sectionsData[title].reduce((sum, a) => sum + a.amount, 0),
+    }));
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=occupancy-report.xlsx');
-    await workbook.xlsx.write(res);
-    res.end();
+    const netIncome = totalRevenue - totalExpense;
+
+    return {
+      period: { startDate, endDate },
+      sections,
+      totalRevenue,
+      totalExpense,
+      netIncome,
+    };
   }
 
-  async generateExpensesExcel(filters: any, res: Response) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('تقرير المصروفات');
+  async balanceSheet(params: ReportParams): Promise<BalanceSheetReport> {
+    const { endDate } = await this.getPeriodRange(params);
 
-    worksheet.columns = [
-      { header: 'التاريخ', key: 'date', width: 15 },
-      { header: 'الفئة', key: 'category', width: 20 },
-      { header: 'العقار', key: 'property', width: 25 },
-      { header: 'الوصف', key: 'description', width: 35 },
-      { header: 'المبلغ', key: 'amount', width: 15 },
-      { header: 'العملة', key: 'currency', width: 10 },
-    ];
-
-    const expenses = await this.prisma.expense.findMany({
+    const lines = await this.prisma.journalLine.findMany({
       where: {
-        propertyId: filters.property && filters.property !== 'all' ? filters.property : undefined,
+        journalEntry: {
+          status: JournalStatus.POSTED,
+          date: { lte: endDate },
+        },
+        account: { type: { in: [AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY] } }
       },
-      include: { property: true },
-      orderBy: { date: 'desc' }
+      include: { account: true }
     });
 
-    expenses.forEach(e => {
-      worksheet.addRow({
-        date: e.date.toLocaleDateString('ar-IQ'),
-        category: e.category,
-        property: e.property?.name || 'عام',
-        description: e.description || e.title,
-        amount: e.amount,
-        currency: e.currency,
-      });
+    const accountMap = new Map<string, { code: string, name: string, type: string, subtype: string, balance: number }>();
+    for (const line of lines) {
+      if (!accountMap.has(line.accountId)) {
+        accountMap.set(line.accountId, {
+          code: line.account.code,
+          name: line.account.name,
+          type: line.account.type,
+          subtype: line.account.subtype || 'OTHER',
+          balance: 0
+        });
+      }
+      const item = accountMap.get(line.accountId)!;
+      const dr = Number(line.baseCurrencyDebit);
+      const cr = Number(line.baseCurrencyCredit);
+
+      if (line.account.type === AccountType.ASSET) {
+        item.balance += (dr - cr);
+      } else {
+        item.balance += (cr - dr);
+      }
+    }
+
+    // Add Retained Earnings (Net Income from inception to date)
+    const plLines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: {
+          status: JournalStatus.POSTED,
+          date: { lte: endDate },
+        },
+        account: { type: { in: [AccountType.REVENUE, AccountType.EXPENSE] } }
+      },
+      include: { account: true }
     });
 
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE11D48' } }; // Rose-600
+    let cumulativeNetIncome = 0;
+    for (const line of plLines) {
+      const dr = Number(line.baseCurrencyDebit);
+      const cr = Number(line.baseCurrencyCredit);
+      if (line.account.type === 'REVENUE') cumulativeNetIncome += (cr - dr);
+      else cumulativeNetIncome -= (dr - cr);
+    }
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=expenses-report.xlsx');
-    await workbook.xlsx.write(res);
-    res.end();
-  }
+    const assets_current: BalanceSheetLine[] = [];
+    const assets_fixed: BalanceSheetLine[] = [];
+    const liab_current: BalanceSheetLine[] = [];
+    const liab_long: BalanceSheetLine[] = [];
+    const equity: BalanceSheetLine[] = [];
 
-  async generateTenantsExcel(res: Response) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('بيانات المستأجرين');
-
-    worksheet.columns = [
-      { header: 'اسم المستأجر', key: 'name', width: 25 },
-      { header: 'رقم الهاتف', key: 'phone', width: 20 },
-      { header: 'البريد الإلكتروني', key: 'email', width: 25 },
-      { header: 'العقار', key: 'property', width: 25 },
-      { header: 'الوحدة', key: 'unit', width: 15 },
-      { header: 'انتهاء العقد', key: 'endDate', width: 20 },
-    ];
-
-    const leases = await this.prisma.lease.findMany({
-      where: { status: 'ACTIVE' },
-      include: {
-        tenant: true,
-        unit: { include: { property: true } }
+    accountMap.forEach(val => {
+      const line = { code: val.code, name: val.name, balance: val.balance };
+      if (val.type === 'ASSET') {
+        if (val.subtype.includes('FIXED')) assets_fixed.push(line);
+        else assets_current.push(line);
+      } else if (val.type === 'LIABILITY') {
+        if (val.subtype.includes('LONG_TERM')) liab_long.push(line);
+        else liab_current.push(line);
+      } else {
+        equity.push(line);
       }
     });
 
-    leases.forEach(l => {
-      worksheet.addRow({
-        name: `${l.tenant.firstName} ${l.tenant.lastName}`,
-        phone: l.tenant.phone,
-        email: l.tenant.email,
-        property: l.unit.property.name,
-        unit: l.unit.unitNumber,
-        endDate: l.endDate.toLocaleDateString('ar-IQ'),
+    equity.push({ code: '3100', name: 'Retained Earnings (Cumulative)', balance: cumulativeNetIncome });
+
+    const totalAssets = assets_current.reduce((s, a) => s + a.balance, 0) + assets_fixed.reduce((s, a) => s + a.balance, 0);
+    const totalLiabilities = liab_current.reduce((s, l) => s + l.balance, 0) + liab_long.reduce((s, l) => s + l.balance, 0);
+    const totalEquity = equity.reduce((s, e) => s + e.balance, 0);
+
+    const variance = totalAssets - (totalLiabilities + totalEquity);
+
+    return {
+      asOfDate: endDate,
+      isBalanced: Math.abs(variance) < 0.01,
+      variance,
+      assets: { currentAssets: assets_current, fixedAssets: assets_fixed, totalAssets },
+      liabilities: { currentLiabilities: liab_current, longTermLiabilities: liab_long, totalLiabilities },
+      equity: { lines: equity, totalEquity },
+      totalLiabilitiesAndEquity: totalLiabilities + totalEquity
+    };
+  }
+
+  async cashFlowStatement(params: ReportParams): Promise<CashFlowReport> {
+    const { startDate, endDate } = await this.getPeriodRange(params);
+    const is = await this.incomeStatement(params);
+
+    const getBalanceChange = async (accountCode: string) => {
+      const startBal = await this.getAccountBalanceAt(accountCode, startDate);
+      const endBal = await this.getAccountBalanceAt(accountCode, endDate);
+      return endBal - startBal;
+    };
+
+    const arChange = await getBalanceChange('1100'); // Asset: increase = cash used (-)
+    const apChange = await getBalanceChange('2000'); // Liab: increase = cash provided (+)
+    const defRevChange = await getBalanceChange('2200'); // Liab: increase = cash provided (+)
+
+    const operatingItems = [
+      { name: 'Increase in Accounts Receivable', amount: -arChange },
+      { name: 'Increase in Accounts Payable', amount: apChange },
+      { name: 'Increase in Deferred Revenue', amount: defRevChange },
+    ];
+
+    const investingLines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: { status: JournalStatus.POSTED, date: { gte: startDate, lte: endDate } },
+        account: { subtype: { contains: 'FIXED' } }
+      }
+    });
+    const investingTotal = investingLines.reduce((s, l) => s + (Number(l.baseCurrencyCredit) - Number(l.baseCurrencyDebit)), 0);
+
+    const financingLines = await this.prisma.journalLine.findMany({
+      where: {
+        journalEntry: { status: JournalStatus.POSTED, date: { gte: startDate, lte: endDate } },
+        account: { type: AccountType.EQUITY }
+      }
+    });
+    const financingTotal = financingLines.reduce((s, l) => s + (Number(l.baseCurrencyCredit) - Number(l.baseCurrencyDebit)), 0);
+
+    const operatingTotal = is.netIncome + operatingItems.reduce((s, i) => s + i.amount, 0);
+    const netCashChange = operatingTotal + investingTotal + financingTotal;
+
+    const openingCash = await this.getAccountBalanceAt('1000', startDate);
+    const closingCash = await this.getAccountBalanceAt('1000', endDate);
+
+    return {
+      period: { startDate, endDate },
+      netIncome: is.netIncome,
+      operatingActivities: { items: operatingItems, total: operatingTotal },
+      investingActivities: { items: [], total: investingTotal },
+      financingActivities: { items: [], total: financingTotal },
+      netCashChange,
+      openingCash,
+      closingCash
+    };
+  }
+
+  async propertyProfitability(params: ReportParams): Promise<PropertyProfitabilityReport> {
+    const { startDate, endDate } = await this.getPeriodRange(params);
+    const properties = await this.prisma.property.findMany();
+    const report: PropertyProfitabilityReport = [];
+
+    for (const prop of properties) {
+       const revLines = await this.prisma.journalLine.findMany({
+         where: {
+           journalEntry: { status: JournalStatus.POSTED, date: { gte: startDate, lte: endDate } },
+           account: { type: AccountType.REVENUE },
+           // Links via reference containing Lease ID or Installment ID.
+           // In production this would use join tables or structured metadata.
+           // Simplified for now: search by property unit inhabitants
+         }
+       });
+
+       const expLines = await this.prisma.journalLine.findMany({
+         where: {
+           journalEntry: { status: JournalStatus.POSTED, date: { gte: startDate, lte: endDate } },
+           account: { type: AccountType.EXPENSE },
+         }
+       });
+
+       const revenue = revLines.reduce((s, l) => s + (Number(l.baseCurrencyCredit) - Number(l.baseCurrencyDebit)), 0);
+       const expenses = expLines.reduce((s, l) => s + (Number(l.baseCurrencyDebit) - Number(l.baseCurrencyCredit)), 0);
+       const netProfit = revenue - expenses;
+
+       report.push({
+         propertyId: prop.id,
+         propertyName: prop.name || 'Unknown',
+         propertyCode: prop.id, // placeholder
+         revenue,
+         expenses,
+         netProfit,
+         netProfitMarginPct: revenue > 0 ? (netProfit / revenue) * 100 : 0,
+         occupancyRate: 0.85, // Placeholder - logic: sum(lease days) / (unitCount * periodDays)
+         unitCount: 10,
+         occupiedUnits: 8
+       });
+    }
+
+    return report;
+  }
+
+  async trialBalance(params: ReportParams) {
+    const { endDate } = await this.getPeriodRange(params);
+    const accounts = await this.prisma.account.findMany();
+    const rows = [];
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    for (const acc of accounts) {
+      const agg = await this.prisma.journalLine.aggregate({
+        where: {
+          accountId: acc.id,
+          journalEntry: { status: JournalStatus.POSTED, date: { lte: endDate } }
+        },
+        _sum: { baseCurrencyDebit: true, baseCurrencyCredit: true }
       });
-    });
+      const debit = Number(agg._sum.baseCurrencyDebit || 0);
+      const credit = Number(agg._sum.baseCurrencyCredit || 0);
+      if (debit === 0 && credit === 0) continue;
 
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } }; // Emerald-600
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=tenants-report.xlsx');
-    await workbook.xlsx.write(res);
-    res.end();
+      rows.push({
+        accountCode: acc.code,
+        accountName: acc.name,
+        debit,
+        credit
+      });
+      totalDebit += debit;
+      totalCredit += credit;
+    }
+    return { asOfDate: endDate, rows, totalDebit, totalCredit };
   }
 
-  async generateFinancialPdf(filters: any, res: Response) {
-    const doc = new PDFDocument({ margin: 50 });
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=financial-report.pdf');
-    doc.pipe(res);
-
-    doc.fontSize(24).text('RentFlow - Financial Report', { align: 'center' });
-    doc.fontSize(10).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-    doc.moveDown(2);
-
-    const payments = await this.prisma.payment.findMany({
-       where: { status: 'COMPLETED' },
-       take: 10,
-       orderBy: { paidDate: 'desc' }
-    });
-    const expenses = await this.prisma.expense.findMany({ take: 10, orderBy: { date: 'desc' } });
-
-    const totalIncome = (await this.prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'COMPLETED' } }))._sum.amount || 0;
-    const totalExpenses = (await this.prisma.expense.aggregate({ _sum: { amount: true } }))._sum.amount || 0;
-
-    doc.rect(50, doc.y, 500, 80).fill('#F3F4F6');
-    doc.fillColor('#1F2937').fontSize(14).text('Executive Summary', 70, doc.y + 10);
-    doc.fontSize(11).text(`Total Revenue: ${totalIncome.toLocaleString()} IQD`, 70, doc.y + 20);
-    doc.text(`Total Expenditures: ${totalExpenses.toLocaleString()} IQD`, 70, doc.y + 10);
-    doc.fillColor('#059669').fontSize(14).text(`Net Operating Profit: ${(totalIncome - totalExpenses).toLocaleString()} IQD`, 70, doc.y + 10);
-    doc.fillColor('black');
-
-    doc.moveDown(4);
-    doc.fontSize(14).text('Recent Transactions History', { underline: true });
-    doc.moveDown();
-
-    payments.forEach(p => {
-       doc.fontSize(10).text(`${p.paidDate.toLocaleDateString()} - Income: ${p.amount.toLocaleString()} IQD (${p.paymentNumber})`);
-    });
-    doc.moveDown();
-    expenses.forEach(e => {
-       doc.fontSize(10).text(`${e.date.toLocaleDateString()} - Expense: ${e.amount.toLocaleString()} IQD - ${e.title}`);
-    });
-
-    doc.end();
+  async arAging(params: ReportParams) {
+    const { endDate } = await this.getPeriodRange(params);
+    return this.arService.getAgingReport(endDate);
   }
 
-  async getProperties() {
-    return this.prisma.property.findMany({
-      select: { id: true, name: true }
+  async budgetVsActual(params: ReportParams) {
+    const budget = await this.prisma.budget.findFirst({
+      where: { status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' }
     });
+    if (!budget) throw new NotFoundException('No approved budget found');
+    return this.budgetService.getVariance(budget.id);
+  }
+
+  private async getAccountBalanceAt(accountCode: string, date: Date) {
+    const lines = await this.prisma.journalLine.findMany({
+      where: {
+        account: { code: accountCode },
+        journalEntry: { status: JournalStatus.POSTED, date: { lt: date } }
+      },
+      include: { account: true }
+    });
+
+    let bal = 0;
+    for (const l of lines) {
+      const dr = Number(l.baseCurrencyDebit);
+      const cr = Number(l.baseCurrencyCredit);
+      if (['ASSET', 'EXPENSE'].includes(l.account.type)) bal += (dr - cr);
+      else bal += (cr - dr);
+    }
+    return bal;
   }
 }

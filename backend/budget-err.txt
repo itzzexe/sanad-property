@@ -1,0 +1,34 @@
+  ظù Test suite failed to run
+
+    [96msrc/modules/budget/budget.service.ts[0m:[93m102[0m:[93m79[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m102[0m         const account = await this.prisma.account.findUnique({ where: { code: rec.accountCode } });
+    [7m   [0m [91m                                                                              ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m104[0m:[93m53[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m104[0m           errors.push(`Row ${i + 1}: Account code ${rec.accountCode} not found`);
+    [7m   [0m [91m                                                    ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m108[0m:[93m71[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m108[0m         const period = budget.fiscalYear.periods.find(p => p.name === rec.periodName || p.periodNumber.toString() === rec.periodName);
+    [7m   [0m [91m                                                                      ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m108[0m:[93m119[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m108[0m         const period = budget.fiscalYear.periods.find(p => p.name === rec.periodName || p.periodNumber.toString() === rec.periodName);
+    [7m   [0m [91m                                                                                                                      ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m110[0m:[93m54[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m110[0m           errors.push(`Row ${i + 1}: Fiscal period ${rec.periodName} not found in fiscal year`);
+    [7m   [0m [91m                                                     ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m114[0m:[93m35[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m114[0m         const amount = parseFloat(rec.amount);
+    [7m   [0m [91m                                  ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m116[0m:[93m55[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m116[0m           errors.push(`Row ${i + 1}: Invalid amount ${rec.amount}`);
+    [7m   [0m [91m                                                      ~~~[0m
+    [96msrc/modules/budget/budget.service.ts[0m:[93m124[0m:[93m18[0m - [91merror[0m[90m TS18046: [0m'rec' is of type 'unknown'.
+
+    [7m124[0m           notes: rec.notes,
+    [7m   [0m [91m                 ~~~[0m

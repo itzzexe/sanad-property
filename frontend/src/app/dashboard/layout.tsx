@@ -25,6 +25,7 @@ const BASE_NAVIGATION = [
 ];
 
 const FINANCIAL_NAVIGATION = [
+  { name: "المحاسبة المالية", href: "/dashboard/finance", icon: Wallet },
   { name: "المصروفات والفواتير", href: "/dashboard/expenses", icon: Zap },
   { name: "تقسيم الأرباح", href: "/dashboard/sharing", icon: Calculator },
   { name: "الأصول والإهلاك", href: "/dashboard/assets", icon: FileBadge },

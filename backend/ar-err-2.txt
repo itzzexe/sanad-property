@@ -1,0 +1,37 @@
+  ● ArService › writeOff › succeeds and creates journal entry
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"reference": "t1", "sourceType": "WRITE_OFF"}, "u1", {"$transaction": [Function mockConstructor], "account": {"findUnique": [Function mockConstructor]}, "creditMemo": {"create": [Function mockConstructor]}, "journalLine": {"aggregate": [Function mockConstructor], "findMany": [Function mockConstructor]}, "lease": {"findMany": [Function mockConstructor]}, "tenant": {"findMany": [Function mockConstructor], "findUnique": [Function mockConstructor]}, "writeOff": {"create": [Function mockConstructor]}}
+    Received: {"date": 2026-04-06T17:26:10.807Z, "description": "AR write-off for tenant #t1: r", "lines": [{"accountId": "acc2", "credit": 0, "debit": 300}, {"accountId": "acc1", "credit": 300, "debit": 0}], "reference": "t1", "sourceType": "WRITE_OFF"}, "u1"
+
+    Number of calls: 1
+
+    [0m [90m 162 |[39m       [36mconst[39m res [33m=[39m [36mawait[39m service[33m.[39mwriteOff({ tenantId[33m:[39m [32m't1'[39m[33m,[39m amount[33m:[39m [35m300[39m[33m,[39m reason[33m:[39m [32m'r'[39m[33m,[39m approvedById[33m:[39m [32m'u1'[39m })[33m;[39m
+     [90m 163 |[39m       expect(res[33m.[39mid)[33m.[39mtoBe([32m'wo1'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 164 |[39m       expect(journalService[33m.[39mcreateAndPost)[33m.[39mtoHaveBeenCalledWith(
+     [90m     |[39m                                            [31m[1m^[22m[39m
+     [90m 165 |[39m         expect[33m.[39mobjectContaining({ sourceType[33m:[39m [32m'WRITE_OFF'[39m[33m,[39m reference[33m:[39m [32m't1'[39m })[33m,[39m
+     [90m 166 |[39m         [32m'u1'[39m[33m,[39m
+     [90m 167 |[39m         prisma[0m
+
+      at Object.<anonymous> (modules/accounts-receivable/ar.service.spec.ts:164:44)
+
+  ● ArService › createCreditMemo › succeeds and creates journal entry
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"sourceType": "CREDIT_MEMO"}, "u1", {"$transaction": [Function mockConstructor], "account": {"findUnique": [Function mockConstructor]}, "creditMemo": {"create": [Function mockConstructor]}, "journalLine": {"aggregate": [Function mockConstructor], "findMany": [Function mockConstructor]}, "lease": {"findMany": [Function mockConstructor]}, "tenant": {"findMany": [Function mockConstructor], "findUnique": [Function mockConstructor]}, "writeOff": {"create": [Function mockConstructor]}}
+    Received: {"date": 2026-04-06T17:26:10.825Z, "description": "Credit memo for tenant #t1: r", "lines": [{"accountId": "acc1", "credit": 0, "debit": 300}, {"accountId": "acc2", "credit": 300, "debit": 0}], "reference": "t1", "sourceType": "CREDIT_MEMO"}, "u1"
+
+    Number of calls: 1
+
+    [0m [90m 189 |[39m       [36mconst[39m res [33m=[39m [36mawait[39m service[33m.[39mcreateCreditMemo({ tenantId[33m:[39m [32m't1'[39m[33m,[39m amount[33m:[39m [35m300[39m[33m,[39m reason[33m:[39m [32m'r'[39m[33m,[39m createdById[33m:[39m [32m'u1'[39m })[33m;[39m
+     [90m 190 |[39m       expect(res[33m.[39mid)[33m.[39mtoBe([32m'cm1'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 191 |[39m       expect(journalService[33m.[39mcreateAndPost)[33m.[39mtoHaveBeenCalledWith(
+     [90m     |[39m                                            [31m[1m^[22m[39m
+     [90m 192 |[39m         expect[33m.[39mobjectContaining({ sourceType[33m:[39m [32m'CREDIT_MEMO'[39m })[33m,[39m
+     [90m 193 |[39m         [32m'u1'[39m[33m,[39m
+     [90m 194 |[39m         prisma[0m
+
+      at Object.<anonymous> (modules/accounts-receivable/ar.service.spec.ts:191:44)

@@ -1,0 +1,7 @@
+  ظù Test suite failed to run
+
+    [96msrc/modules/fiscal-period/fiscal-period.service.ts[0m:[93m85[0m:[93m5[0m - [91merror[0m[90m TS2322: [0mType '({ periods: { name: string; id: string; startDate: Date; endDate: Date; status: FiscalPeriodStatus; createdAt: Date; updatedAt: Date; periodNumber: number; fiscalYearId: string; closedAt: Date | null; closedBy: string | null; }[]; } & { ...; }) | null' is not assignable to type '{ name: string; id: string; startDate: Date; endDate: Date; status: FiscalYearStatus; createdAt: Date; updatedAt: Date; }'.
+      Type 'null' is not assignable to type '{ name: string; id: string; startDate: Date; endDate: Date; status: FiscalYearStatus; createdAt: Date; updatedAt: Date; }'.
+
+    [7m85[0m     return this.prisma.$transaction(async (tx) => {
+    [7m  [0m [91m    ~~~~~~[0m

@@ -4,10 +4,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class LeaseService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly eventEmitter: EventEmitter2) {}
 
   async create(dto: CreateLeaseDto) {
     // Check unit availability
@@ -50,6 +51,22 @@ export class LeaseService {
       await this.generateInstallments(tx, lease);
 
       return lease;
+    });
+
+    // Calculate total rent
+    let totalRentAmount = 0;
+    const freqMonths = this.getFrequencyMonths(dto.paymentFrequency || 'MONTHLY');
+    let current = new Date(dto.startDate);
+    const end = new Date(dto.endDate);
+    while (current < end) {
+      totalRentAmount += dto.rentAmount;
+      current.setMonth(current.getMonth() + freqMonths);
+    }
+
+    this.eventEmitter.emit('lease.created', {
+      leaseId: result.id,
+      totalRentAmount,
+      currency: result.currency ?? 'USD',
     });
 
     return result;
@@ -154,7 +171,14 @@ export class LeaseService {
   async terminate(id: string) {
     const lease = await this.findOne(id);
 
-    return this.prisma.$transaction(async (tx) => {
+    let remainingDeferredAmount = 0;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const pendingInsts = await tx.installment.findMany({
+        where: { leaseId: id, status: 'PENDING' }
+      });
+      remainingDeferredAmount = pendingInsts.reduce((sum, inst) => sum + inst.amount, 0);
+
       await tx.lease.update({
         where: { id },
         data: { status: 'TERMINATED', deletedAt: new Date() },
@@ -167,6 +191,14 @@ export class LeaseService {
 
       return { message: 'Lease terminated' };
     });
+
+    this.eventEmitter.emit('lease.terminated', {
+      leaseId: id,
+      remainingDeferredAmount,
+      currency: lease.currency ?? 'USD',
+    });
+
+    return result;
   }
 
   async importExcel(buffer: Buffer) {
