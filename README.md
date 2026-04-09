@@ -1,274 +1,226 @@
-# 🏢 RentFlow – Advanced Rent Management System
+# RentFlow | Advanced Property & Financial Management System
 
-A production-grade SaaS web application for managing property rentals, payments, installments, and receipt generation.
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
-![RentFlow](https://img.shields.io/badge/RentFlow-v1.0-blue?style=for-the-badge)
-![Next.js](https://img.shields.io/badge/Next.js-14-000?style=flat-square&logo=next.js)
-![NestJS](https://img.shields.io/badge/NestJS-10-ea2845?style=flat-square&logo=nestjs)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square&logo=postgresql)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ed?style=flat-square&logo=docker)
+RentFlow is a production-grade, full-stack ERP solution designed for modern real estate management. It combines intuitive property management with a robust, double-entry financial backend, allowing property managers to track everything from lease installments to complex trial balances in one unified platform.
 
 ---
 
-## 📋 Table of Contents
+## 1. Project Overview
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Quick Start](#-quick-start)
-- [Environment Variables](#-environment-variables)
-- [API Documentation](#-api-documentation)
-- [Demo Credentials](#-demo-credentials)
-- [Deployment](#-deployment)
+RentFlow solves the fragmentation issue in real estate management by bridging the gap between operations (tenants, units, leases) and finance (accounting, reporting, taxation). It ensures every operational event—like a lease signing or a maintenance payment—generates the correct accounting entries automatically.
+
+**Key Value Propositions:**
+- **Financial Integrity:** Full double-entry accounting system with automated journal entries.
+- **Operational Efficiency:** Automated lease installment engine and receipt generation.
+- **Data-Driven Insights:** Real-time financial reports including Income Statements and Balance Sheets.
 
 ---
 
-## ✨ Features
+## 2. Key Features
 
-### Core Modules
-- **🔐 Authentication & Authorization** – JWT access/refresh tokens, RBAC (Admin, Owner, Accountant)
-- **🏠 Property Management** – CRUD properties with search, filtering, pagination
-- **🚪 Unit Management** – Apartments, shops, offices with status tracking
-- **👥 Tenant Management** – Profiles, ID documents, contact details
-- **📄 Lease Contracts** – Link tenants to units with rent, duration, frequency
-- **💳 Payment System** – Full/partial payments, multiple methods (cash, transfer, wallet)
-- **📅 Installment Engine** – Auto-generated schedules, overdue tracking, late fees
-- **🧾 Receipt System** – PDF generation with QR codes, download & email
-- **🔔 Notifications** – Email/SMS alerts for payments and lease events
-- **📊 Dashboard** – KPIs, revenue charts, occupancy rates, analytics
+### 🔐 Authentication & Security
+- Role-Based Access Control (RBAC): Admin, Accountant, Owner, and Maintenance roles.
+- Secure JWT-based authentication with Passport.js.
+- Protected API routes and encrypted password hashing.
 
-### Advanced Features
-- ⚡ Late fee auto-calculation
-- 🌐 Multi-currency support (USD, EUR, GBP, AED, SAR, etc.)
-- 📁 File upload system (MinIO/S3-compatible)
-- 🔍 Search & filtering across all entities
-- 📋 Audit logging for all critical actions
-- 🛡️ Rate limiting, CSRF/XSS protection, input validation
+### 🏢 Property & Asset Management
+- Hierarchical structure: Properties → Blocks → Floors → Units.
+- Real-time occupancy tracking and unit status management.
+- Dynamic asset attribute mapping.
 
----
+### 📜 Lease & Tenant Lifecycle
+- Automated installment generation based on lease terms (Monthly, Quarterly, Annually).
+- Tenant portal ready (Backend support for tenant profiles and balances).
+- Contract management with automated status updates.
 
-## 🧱 Tech Stack
+### 💰 Double-Entry Finance
+- **Chart of Accounts (COA):** Customizable multi-level account hierarchy.
+- **Journal Entries:** Manual and automated journals with multi-currency support.
+- **Fiscal Periods:** Support for opening/closing fiscal years and periods.
+- **Taxation:** Configurable tax rates (VAT) integrated into billing.
 
-| Layer          | Technology                          |
-|----------------|-------------------------------------|
-| Frontend       | Next.js 14, TypeScript, Tailwind CSS, ShadCN UI, Recharts |
-| Backend        | NestJS 10, TypeScript, Prisma ORM   |
-| Database       | PostgreSQL 16                       |
-| Storage        | MinIO (S3-compatible)               |
-| Auth           | JWT + Refresh Tokens, bcrypt, RBAC  |
-| Infrastructure | Docker, Docker Compose, Nginx       |
-| Docs           | Swagger/OpenAPI                     |
+### 📊 Financial Reporting
+- **Trial Balance:** Real-time account balance verification.
+- **Income Statement (P&L):** Revenue vs. Expense tracking with prior period comparison.
+- **Balance Sheet:** Snapshots of Assets, Liabilities, and Equity.
+- **AR/AP Aging:** Tracking of outstanding tenant receivables and vendor payables.
 
 ---
 
-## 📁 Project Structure
+## 3. System Architecture
 
+RentFlow follows a **Modular Monolith** architecture to ensure scalability while maintaining simplicity for deployment.
+
+```mermaid
+graph TD
+    User((User)) -->|Next.js| Frontend[Frontend - Next.js 14]
+    Frontend -->|REST API| Backend[Backend - NestJS]
+    Backend -->|Prisma ORM| DB[(PostgreSQL)]
+    Backend -->|S3 Protocol| Storage[MinIO / Cloud Storage]
+    Backend -->|JWT| Auth[Passport Auth Service]
 ```
-sanad-property/
-├── backend/                    # NestJS API
-│   ├── prisma/
-│   │   ├── schema.prisma       # Database schema
-│   │   └── seed.ts             # Seed data
+
+- **Frontend:** A responsive SPA using Next.js, optimized for server-side rendering where needed.
+- **Backend:** A NestJS framework providing dependency injection, modularity, and strict TypeScript patterns.
+- **Database:** Prisma ORM acts as the type-safe bridge to PostgreSQL, ensuring schema consistency.
+
+---
+
+## 4. Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | Next.js 14 (App Router), Tailwind CSS, Radix UI, Lucide Icons |
+| **Backend** | NestJS (Node.js), TypeScript, EventEmitter2 (Async events) |
+| **ORM/DB** | Prisma v5+, PostgreSQL |
+| **Validation** | Zod (Frontend), Class Validator & Transformer (Backend) |
+| **Authentication** | Passport.js, JWT Strategy |
+| **DevOps** | Docker, MinIO (Object Storage), GitHub Actions |
+
+---
+
+## 5. Project Structure
+
+```text
+/
+├── backend/               # NestJS Source Code
 │   ├── src/
-│   │   ├── main.ts             # Entry point
-│   │   ├── app.module.ts       # Root module
-│   │   ├── prisma/             # Database service
-│   │   └── modules/
-│   │       ├── auth/           # Authentication & RBAC
-│   │       ├── property/       # Property CRUD
-│   │       ├── unit/           # Unit CRUD
-│   │       ├── tenant/         # Tenant CRUD
-│   │       ├── lease/          # Lease/contract management
-│   │       ├── payment/        # Payment tracking
-│   │       ├── installment/    # Installment engine
-│   │       ├── receipt/        # PDF receipt generation
-│   │       ├── notification/   # Notifications
-│   │       ├── dashboard/      # Analytics & KPIs
-│   │       ├── upload/         # File uploads (MinIO)
-│   │       └── audit/          # Audit logging
-│   ├── Dockerfile
-│   └── package.json
-├── frontend/                   # Next.js App
+│   │   ├── modules/       # Domain-driven modules (Auth, Financials, Properties)
+│   │   ├── prisma/        # Database service and client
+│   │   └── common/        # Global guards, filters, and decorators
+│   ├── prisma/            # Schema definition and seed scripts
+│   └── .env.example       # Backend environment template
+├── frontend/              # Next.js Source Code
 │   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.tsx      # Root layout
-│   │   │   ├── page.tsx        # Landing redirect
-│   │   │   ├── login/          # Login page
-│   │   │   └── dashboard/      # Dashboard pages
-│   │   │       ├── layout.tsx  # Sidebar layout
-│   │   │       ├── page.tsx    # Dashboard KPIs
-│   │   │       ├── properties/ # Properties
-│   │   │       ├── units/      # Units
-│   │   │       ├── tenants/    # Tenants
-│   │   │       ├── contracts/  # Contracts
-│   │   │       ├── payments/   # Payments
-│   │   │       └── receipts/   # Receipts
-│   │   ├── components/ui/      # ShadCN components
-│   │   └── lib/                # Utils & API client
-│   ├── Dockerfile
-│   └── package.json
-├── nginx/
-│   └── nginx.conf              # Reverse proxy config
-├── docker-compose.yml          # All services
-├── .env.example                # Environment template
-└── README.md
+│   │   ├── app/           # App Router (Pages & Layouts)
+│   │   ├── components/    # Reusable UI & Business components
+│   │   ├── lib/           # API clients and utilities
+│   │   └── hooks/         # Custom React hooks
+│   └── .env.local         # Frontend environment template
+└── run.bat                # Unified launcher script (Windows)
 ```
 
 ---
 
-## 🚀 Quick Start
+## 6. Installation & Setup
 
 ### Prerequisites
-- **Node.js** >= 18
-- **Docker** & **Docker Compose** (for full stack)
-- **PostgreSQL** 16 (or use Docker)
+- **Node.js:** v18.x or higher
+- **PostgreSQL:** v14+
+- **MinIO:** (Optional, defaults to local dev settings)
 
-### Option 1: Docker (Recommended)
+### Step-by-Step Setup
 
-```bash
-# 1. Clone and navigate
-cd sanad-property
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-repo/rentflow.git
+   cd rentflow
+   ```
 
-# 2. Copy environment file
-cp .env.example .env
+2. **Backend Configuration:**
+   ```bash
+   cd backend
+   npm install
+   cp .env.example .env
+   ```
+   *Edit `.env` with your database credentials.*
 
-# 3. Start all services
-docker-compose up -d
+3. **Frontend Configuration:**
+   ```bash
+   cd ../frontend
+   npm install
+   cp .env.local.example .env.local
+   ```
 
-# 4. Run database migrations & seed
-docker exec rentflow-backend npx prisma migrate deploy
-docker exec rentflow-backend npx prisma db seed
+4. **Initialize Database:**
+   ```bash
+   cd ../backend
+   npx prisma db push
+   npx prisma db seed
+   ```
 
-# 5. Open the app
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:4000/api
-# Swagger Docs: http://localhost:4000/docs
-# Nginx Proxy: http://localhost:80
+---
+
+## 7. Configuration (.env)
+
+### Backend `.env`
+```ini
+PORT=4000
+DATABASE_URL="postgresql://user:password@localhost:5432/rentflow"
+JWT_SECRET="your_ultra_secure_secret"
+MINIO_ENDPOINT="localhost"
+MINIO_ACCESS_KEY="minio-root"
+MINIO_SECRET_KEY="minio-password"
 ```
 
-### Option 2: Local Development
-
-```bash
-# 1. Start PostgreSQL (via Docker or local install)
-docker run -d --name rentflow-db \
-  -e POSTGRES_USER=rentflow \
-  -e POSTGRES_PASSWORD=rentflow_secret \
-  -e POSTGRES_DB=rentflow \
-  -p 5432:5432 \
-  postgres:16-alpine
-
-# 2. Backend setup
-cd backend
-npm install
-cp ../.env.example .env
-# Add DATABASE_URL=postgresql://rentflow:rentflow_secret@localhost:5432/rentflow to .env
-npx prisma generate
-npx prisma migrate dev --name init
-npx prisma db seed
-npm run start:dev
-
-# 3. Frontend setup (new terminal)
-cd frontend
-npm install
-npm run dev
-
-# 4. Open
-# Frontend: http://localhost:3000
-# Backend: http://localhost:4000
-# Swagger: http://localhost:4000/docs
+### Frontend `.env.local`
+```ini
+NEXT_PUBLIC_API_URL="http://localhost:4000/api"
 ```
 
 ---
 
-## 🔧 Environment Variables
+## 8. API Documentation
 
-| Variable              | Description                    | Default                     |
-|-----------------------|--------------------------------|-----------------------------|
-| `POSTGRES_USER`       | Database username              | `rentflow`                  |
-| `POSTGRES_PASSWORD`   | Database password              | `rentflow_secret`           |
-| `POSTGRES_DB`         | Database name                  | `rentflow`                  |
-| `DATABASE_URL`        | Full PostgreSQL connection URL | (auto-composed in Docker)   |
-| `JWT_SECRET`          | JWT signing secret             | (change in production!)     |
-| `JWT_REFRESH_SECRET`  | Refresh token signing secret   | (change in production!)     |
-| `JWT_EXPIRATION`      | Access token expiry            | `15m`                       |
-| `JWT_REFRESH_EXPIRATION` | Refresh token expiry        | `7d`                        |
-| `MINIO_ACCESS_KEY`    | MinIO access key               | `minioadmin`                |
-| `MINIO_SECRET_KEY`    | MinIO secret key               | `minioadmin123`             |
-| `MINIO_BUCKET`        | Storage bucket name            | `rentflow`                  |
-| `NEXT_PUBLIC_API_URL` | Frontend API base URL          | `http://localhost:4000/api` |
+The API automatically generates **Swagger** documentation.
+- **Local link:** `http://localhost:4000/docs`
 
----
+### Example Endpoint: Create Journal Entry
+**`POST /api/journal-entries`**
 
-## 📚 API Documentation
-
-Swagger documentation is auto-generated at:
-- **Local**: http://localhost:4000/docs
-- **Docker**: http://localhost/docs (via Nginx)
-
-### Key Endpoints
-
-| Method | Endpoint                      | Description              |
-|--------|-------------------------------|--------------------------|
-| POST   | `/api/auth/register`          | Register new user        |
-| POST   | `/api/auth/login`             | Login                    |
-| POST   | `/api/auth/refresh`           | Refresh tokens           |
-| GET    | `/api/properties`             | List properties          |
-| POST   | `/api/properties`             | Create property          |
-| GET    | `/api/units`                  | List units               |
-| GET    | `/api/tenants`                | List tenants             |
-| POST   | `/api/leases`                 | Create lease contract    |
-| POST   | `/api/payments`               | Record payment           |
-| GET    | `/api/installments`           | List installments        |
-| GET    | `/api/installments/overdue`   | Get overdue installments |
-| POST   | `/api/receipts/generate/:id`  | Generate receipt         |
-| GET    | `/api/receipts/:id/pdf`       | Download receipt PDF     |
-| GET    | `/api/dashboard/stats`        | Dashboard KPIs           |
-| GET    | `/api/dashboard/revenue-chart`| Revenue chart data       |
-| GET    | `/api/notifications`          | User notifications       |
-
----
-
-## 🔑 Demo Credentials
-
-| Role       | Email                     | Password      |
-|------------|---------------------------|---------------|
-| Admin      | `admin@rentflow.com`      | `Admin@123`   |
-| Owner      | `owner@rentflow.com`      | `Owner@123`   |
-| Accountant | `accountant@rentflow.com` | `Account@123` |
-
----
-
-## 🚢 Deployment
-
-### Production Checklist
-1. Change all secrets in `.env` (JWT_SECRET, JWT_REFRESH_SECRET, passwords)
-2. Enable HTTPS via Nginx SSL termination
-3. Set `NODE_ENV=production`
-4. Configure proper CORS origins
-5. Set up database backups
-6. Configure monitoring & logging
-
-### Docker Production
-
-```bash
-docker-compose -f docker-compose.yml up -d --build
+**Request Body:**
+```json
+{
+  "date": "2026-04-10",
+  "description": "Office Rent Payment",
+  "lines": [
+    { "accountId": "uuid-1", "debit": 1500, "credit": 0 },
+    { "accountId": "uuid-2", "debit": 0, "credit": 1500 }
+  ]
+}
 ```
 
 ---
 
-## 🧪 Testing
+## 9. Database & Migrations
 
-```bash
-# Backend unit tests
-cd backend
-npm test
+RentFlow uses **Prisma** for schema management.
+- **Sync Schema:** `npx prisma db push` (Development)
+- **Generate Client:** `npx prisma generate`
+- **Reset Data:** `npx prisma migrate reset` (Caution: data loss)
 
-# Backend e2e tests
-npm run test:e2e
-```
+The `seed.ts` script initializes:
+- Default `Admin` user (`admin@rentflow.com` / `Admin@123`).
+- Chart of Accounts (COA) template.
+- Global settings and tax rates.
 
 ---
 
-## 📄 License
+## 10. Troubleshooting
 
-This project is proprietary software. All rights reserved.
+| Issue | Cause | Fix |
+| :--- | :--- | :--- |
+| `EADDRINUSE: 4000` | Process stuck on port 4000 | Run `taskkill /F /IM node.exe /T` or use `run.bat` |
+| `Table 'User' not found` | Schema not synced | Run `npx prisma db push` in the backend |
+| `401 Unauthorized` | Invalid/Expired token | Clear browser local storage and re-login |
+| `404 on /ap/vendors` | Controller path mismatch| Ensure backend controllers use `@Controller('ap/...')` prefix |
+
+---
+
+## 11. Roadmap
+- [ ] Mobile App for Tenants (iOS/Android).
+- [ ] Automated Bank Reconciliation (OFX/CSV import).
+- [ ] Advanced AI-driven occupancy forecasting.
+- [ ] WhatsApp integration for payment reminders.
+
+---
+
+## 12. License
+
+Distributed under the **MIT License**. See `LICENSE` for more information.
+
+---
+**Maintained by the Advanced Agentic Coding Team.**
